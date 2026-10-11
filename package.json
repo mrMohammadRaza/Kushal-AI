@@ -1,0 +1,27 @@
+{
+  "name": "kaushal-ai-monorepo",
+  "version": "1.0.0",
+  "description": "Kaushal AI - AI-assisted Recognition of Prior Learning (RPL) Skill Assessment Tool mapped to NSQF standards (SIH Problem Statement: SIH26242)",
+  "scripts": {
+    "install:all": "npm install && cd backend && npm install && cd ../frontend && npm install",
+    "dev:backend": "cd backend && npm run dev",
+    "dev:frontend": "cd frontend && npm run dev",
+    "dev:ai": "cd ai-service && python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload",
+    "start": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\""
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "keywords": [
+    "sih26242",
+    "rpl",
+    "nsqf",
+    "skill-assessment",
+    "langgraph",
+    "rag",
+    "copilot",
+    "ai"
+  ],
+  "author": "Kaushal AI Team",
+  "license": "MIT"
+}

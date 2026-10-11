@@ -1,0 +1,558 @@
+{
+  "candidates": [
+    {
+      "id": "cand-101",
+      "name": "Ramesh Kumar Sharma",
+      "age": 32,
+      "gender": "Male",
+      "phone": "+91 98765 43210",
+      "aadhaarLast4": "4589",
+      "state": "Uttar Pradesh",
+      "district": "Varanasi",
+      "tradeId": "electrician-l3",
+      "informalExperienceYears": 6,
+      "educationLevel": "Class 8 Pass",
+      "currentOccupation": "Local House Electrician (Self-Employed)",
+      "profilePhoto": "https://images.unsplash.com/photo-1544717305-2782549b5136?w=200&auto=format&fit=crop&q=80",
+      "enrolledDate": "2026-03-15"
+    },
+    {
+      "id": "cand-102",
+      "name": "Mohammad Aslam Ansari",
+      "age": 28,
+      "gender": "Male",
+      "phone": "+91 98111 22334",
+      "aadhaarLast4": "7812",
+      "state": "Bihar",
+      "district": "Patna",
+      "tradeId": "electrician-l4",
+      "informalExperienceYears": 8,
+      "educationLevel": "Class 10 Pass",
+      "currentOccupation": "Sub-station helper & Industrial Panel wirer",
+      "profilePhoto": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&auto=format&fit=crop&q=80",
+      "enrolledDate": "2026-03-20"
+    },
+    {
+      "id": "cand-103",
+      "name": "Sunita Devi",
+      "age": 34,
+      "gender": "Female",
+      "phone": "+91 99223 88410",
+      "aadhaarLast4": "1923",
+      "state": "Rajasthan",
+      "district": "Jaipur",
+      "tradeId": "solar-l4",
+      "informalExperienceYears": 4,
+      "educationLevel": "Class 10 Pass",
+      "currentOccupation": "Rooftop Solar installer & maintenance technician",
+      "profilePhoto": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=200&auto=format&fit=crop&q=80",
+      "enrolledDate": "2026-03-22"
+    },
+    {
+      "id": "cand-104",
+      "name": "Gurpreet Singh",
+      "age": 39,
+      "gender": "Male",
+      "phone": "+91 97654 32190",
+      "aadhaarLast4": "9041",
+      "state": "Punjab",
+      "district": "Ludhiana",
+      "tradeId": "automotive-l4",
+      "informalExperienceYears": 12,
+      "educationLevel": "Class 9 Pass",
+      "currentOccupation": "Independent Garage Master Mechanic",
+      "profilePhoto": "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200&auto=format&fit=crop&q=80",
+      "enrolledDate": "2026-04-01"
+    },
+    {
+      "id": "cand-105",
+      "name": "Dinesh Babu",
+      "age": 26,
+      "gender": "Male",
+      "phone": "+91 91234 56789",
+      "aadhaarLast4": "6632",
+      "state": "Madhya Pradesh",
+      "district": "Bhopal",
+      "tradeId": "plumbing-l3",
+      "informalExperienceYears": 5,
+      "educationLevel": "Class 8 Pass",
+      "currentOccupation": "Domestic Pipe Fitter & Sanitary Technician",
+      "profilePhoto": "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=200&auto=format&fit=crop&q=80",
+      "enrolledDate": "2026-04-05"
+    }
+  ],
+  "assessments": [
+    {
+      "id": "asmt-872381",
+      "candidateId": "cand-101",
+      "candidateName": "Ramesh Kumar Sharma",
+      "tradeId": "electrician-l3",
+      "evaluatedAt": "2026-10-11T08:54:32.381Z",
+      "assessorName": "Er. Rajesh Verma (Lead Assessor, ESSCI)",
+      "mediaEvidence": {
+        "imageUrl": null,
+        "audioUrl": null
+      },
+      "vivaInput": "Pehle main main switch isolate karunga aur phase tester se check karunga power off hai. Fir multimeter se continuity test karunga short circuit dhoondhne ke liye. Compressor winding ka resistance check karunga aur MCB rating verify karunga ki 16A C-curve hai ya nahi. Saath hi 2.5 sq mm copper wire earthing connection check karunga.",
+      "aiEvaluation": {
+        "source": "local-copilot-engine",
+        "tradeId": "electrician-l3",
+        "tradeTitle": "Assistant Electrician",
+        "qpCode": "ELE/Q1401",
+        "nsqfLevel": 3,
+        "candidateId": "cand-101",
+        "overallScore": 83,
+        "status": "Certified",
+        "recommendation": "Recommended for NSQF Level 3 Certification under RPL Category A.",
+        "confidenceScore": 0.92,
+        "visionAnalysis": {
+          "ppeCompliance": {
+            "helmetDetected": true,
+            "glovesDetected": true,
+            "safetyShoesVerified": true,
+            "ppeScore": 92,
+            "remarks": "Candidate wearing required dielectric gloves and protective gear during work demonstration."
+          },
+          "workmanshipQuality": {
+            "wireStripping": "Clean, no damaged strands observed",
+            "crimpingConnection": "Mechanically secure lug termination",
+            "neatnessScore": 88
+          },
+          "toolsIdentified": [
+            "Digital Multimeter / Clamp Meter",
+            "Insulated Screwdriver Set (1000V rated)",
+            "Wire Stripper and Cutter",
+            "Combination Pliers"
+          ]
+        },
+        "vivaTranscript": {
+          "transcript": "Pehle main main switch isolate karunga aur phase tester se check karunga power off hai. Fir multimeter se continuity test karunga short circuit dhoondhne ke liye. Compressor winding ka resistance check karunga aur MCB rating verify karunga ki 16A C-curve hai ya nahi. Saath hi 2.5 sq mm copper wire earthing connection check karunga.",
+          "languageDetected": "en-IN / hi-IN",
+          "technicalKeywordsFound": [
+            "MCB",
+            "continuity test",
+            "copper conductor",
+            "earthing",
+            "isolation"
+          ],
+          "conceptClarityRating": "High"
+        },
+        "nosResults": [
+          {
+            "nosCode": "ELE/N1401",
+            "title": "Select, inspect and prepare electrical tools and materials",
+            "weightage": 20,
+            "score": 83,
+            "status": "Competent",
+            "performanceCriteria": [
+              {
+                "code": "PC1.1",
+                "description": "PC1.1: Verify insulation rating of hand tools before initiating work",
+                "status": "Competent",
+                "score": 91,
+                "evidence": "Verified through practical demonstration and verbal explanation."
+              },
+              {
+                "code": "PC1.2",
+                "description": "PC1.2: Select correct wire gauge (1.5 sq mm, 2.5 sq mm, 4 sq mm) according to circuit load specifications",
+                "status": "Competent",
+                "score": 83,
+                "evidence": "Verified through practical demonstration and verbal explanation."
+              },
+              {
+                "code": "PC1.3",
+                "description": "PC1.3: Inspect test instruments (multimeter, continuity tester) for zero error and calibration",
+                "status": "Competent",
+                "score": 83,
+                "evidence": "Verified through practical demonstration and verbal explanation."
+              },
+              {
+                "code": "PC1.4",
+                "description": "PC1.4: Prepare PVC conduits and junction boxes free from sharp burrs",
+                "status": "Competent",
+                "score": 75,
+                "evidence": "Verified through practical demonstration and verbal explanation."
+              }
+            ],
+            "feedback": "Demonstrates sound practical familiarity with Select, inspect and prepare electrical tools and materials. Standard safety precautions followed."
+          },
+          {
+            "nosCode": "ELE/N1402",
+            "title": "Install wiring, switchboards, and distribution systems",
+            "weightage": 40,
+            "score": 82,
+            "status": "Competent",
+            "performanceCriteria": [
+              {
+                "code": "PC2.1",
+                "description": "PC2.1: Strip cable ends without notching or damaging copper conductor strands",
+                "status": "Competent",
+                "score": 83,
+                "evidence": "Verified through practical demonstration and verbal explanation."
+              },
+              {
+                "code": "PC2.2",
+                "description": "PC2.2: Make secure mechanical and electrical connections using proper crimping lugs and terminal screws",
+                "status": "Competent",
+                "score": 75,
+                "evidence": "Verified through practical demonstration and verbal explanation."
+              },
+              {
+                "code": "PC2.3",
+                "description": "PC2.3: Route cables inside PVC/casing conduits maintaining minimum bend radius",
+                "status": "Competent",
+                "score": 75,
+                "evidence": "Verified through practical demonstration and verbal explanation."
+              },
+              {
+                "code": "PC2.4",
+                "description": "PC2.4: Mount and level switchboards, MCBs (Miniature Circuit Breakers), and socket outlets securely",
+                "status": "Competent",
+                "score": 83,
+                "evidence": "Verified through practical demonstration and verbal explanation."
+              },
+              {
+                "code": "PC2.5",
+                "description": "PC2.5: Connect earth lead securely to 3-pin sockets and main earthing terminal",
+                "status": "Competent",
+                "score": 95,
+                "evidence": "Verified through practical demonstration and verbal explanation."
+              }
+            ],
+            "feedback": "Demonstrates sound practical familiarity with Install wiring, switchboards, and distribution systems. Standard safety precautions followed."
+          },
+          {
+            "nosCode": "ELE/N1403",
+            "title": "Perform basic earthing and circuit continuity testing",
+            "weightage": 25,
+            "score": 88,
+            "status": "Competent",
+            "performanceCriteria": [
+              {
+                "code": "PC3.1",
+                "description": "PC3.1: Carry out continuity test of Phase, Neutral, and Earth conductors using multimeter",
+                "status": "Competent",
+                "score": 95,
+                "evidence": "Verified through practical demonstration and verbal explanation."
+              },
+              {
+                "code": "PC3.2",
+                "description": "PC3.2: Verify polarity of live and neutral at all socket outlets",
+                "status": "Competent",
+                "score": 83,
+                "evidence": "Verified through practical demonstration and verbal explanation."
+              },
+              {
+                "code": "PC3.3",
+                "description": "PC3.3: Inspect earthing electrode and ensure proper connection to main distribution board",
+                "status": "Competent",
+                "score": 91,
+                "evidence": "Verified through practical demonstration and verbal explanation."
+              },
+              {
+                "code": "PC3.4",
+                "description": "PC3.4: Test insulation resistance between live-neutral and live-earth using megohmmeter",
+                "status": "Competent",
+                "score": 83,
+                "evidence": "Verified through practical demonstration and verbal explanation."
+              }
+            ],
+            "feedback": "Demonstrates sound practical familiarity with Perform basic earthing and circuit continuity testing. Standard safety precautions followed."
+          },
+          {
+            "nosCode": "ELE/N9901",
+            "title": "Health, safety, and emergency procedures at electrical work sites",
+            "weightage": 15,
+            "score": 75,
+            "status": "Competent",
+            "performanceCriteria": [
+              {
+                "code": "PC4.1",
+                "description": "PC4.1: Follow Lock-Out/Tag-Out (LOTO) and de-energization verification procedures prior to contact",
+                "status": "Competent",
+                "score": 75,
+                "evidence": "Verified through practical demonstration and verbal explanation."
+              },
+              {
+                "code": "PC4.2",
+                "description": "PC4.2: Don appropriate PPE (gloves, helmet, dielectric footwear) at all work times",
+                "status": "Competent",
+                "score": 75,
+                "evidence": "Verified through practical demonstration and verbal explanation."
+              },
+              {
+                "code": "PC4.3",
+                "description": "PC4.3: Demonstrate first-aid response for electric shock and knowledge of CO2/Dry Powder fire extinguishers",
+                "status": "Competent",
+                "score": 75,
+                "evidence": "Verified through practical demonstration and verbal explanation."
+              },
+              {
+                "code": "PC4.4",
+                "description": "PC4.4: Keep workplace clean, free of moisture and trip hazards",
+                "status": "Competent",
+                "score": 75,
+                "evidence": "Verified through practical demonstration and verbal explanation."
+              }
+            ],
+            "feedback": "Requires minor theoretical reinforcement on standard procedures for Health, safety, and emergency procedures at electrical work sites."
+          }
+        ],
+        "strengths": [
+          "Extensive hands-on tool handling and muscle memory acquired through informal experience.",
+          "Good awareness of basic workplace safety and electrical isolation procedures.",
+          "Clear articulation of troubleshooting steps under domestic fault conditions."
+        ],
+        "gapAreas": [
+          "Formal documentation and wiring schematic reading according to Indian Standards (IS 3043).",
+          "Exact mathematical calculations for cable derating factors under high ambient temperatures."
+        ],
+        "bridgeTrainingModules": [
+          "Module 3: Bureau of Indian Standards (BIS) Earthing & Protective Device Specifications",
+          "Module 5: Digital recordkeeping and formal job card maintenance"
+        ],
+        "assessorSignOffRequired": true
+      },
+      "assessorOverride": null,
+      "finalStatus": "Certified",
+      "signedOff": false,
+      "signedOffAt": null
+    },
+    {
+      "id": "asmt-149256",
+      "candidateId": "cand-101",
+      "candidateName": "Ramesh Kumar Sharma",
+      "tradeId": "electrician-l3",
+      "evaluatedAt": "2026-10-11T08:42:29.256Z",
+      "assessorName": "Lead Assessor (Sector Skill Council)",
+      "mediaEvidence": {
+        "imageUrl": null,
+        "audioUrl": null
+      },
+      "vivaInput": "Pehle main switch isolate karunga aur phase tester se check karunga. Fir multimeter se continuity test karunga MCB rating verify karunga.",
+      "aiEvaluation": {
+        "source": "local-copilot-engine",
+        "tradeId": "electrician-l3",
+        "tradeTitle": "Assistant Electrician",
+        "qpCode": "ELE/Q1401",
+        "nsqfLevel": 3,
+        "candidateId": "cand-101",
+        "overallScore": 78,
+        "status": "Certified",
+        "recommendation": "Recommended for NSQF Level 3 Certification under RPL Category A.",
+        "confidenceScore": 0.92,
+        "visionAnalysis": {
+          "ppeCompliance": {
+            "helmetDetected": true,
+            "glovesDetected": true,
+            "safetyShoesVerified": true,
+            "ppeScore": 92,
+            "remarks": "Candidate wearing required dielectric gloves and protective gear during work demonstration."
+          },
+          "workmanshipQuality": {
+            "wireStripping": "Clean, no damaged strands observed",
+            "crimpingConnection": "Mechanically secure lug termination",
+            "neatnessScore": 88
+          },
+          "toolsIdentified": [
+            "Digital Multimeter / Clamp Meter",
+            "Insulated Screwdriver Set (1000V rated)",
+            "Wire Stripper and Cutter",
+            "Combination Pliers"
+          ]
+        },
+        "vivaTranscript": {
+          "transcript": "Pehle main switch isolate karunga aur phase tester se check karunga. Fir multimeter se continuity test karunga MCB rating verify karunga.",
+          "languageDetected": "en-IN / hi-IN",
+          "technicalKeywordsFound": [
+            "MCB",
+            "continuity test",
+            "copper conductor",
+            "earthing",
+            "isolation"
+          ],
+          "conceptClarityRating": "Moderate"
+        },
+        "nosResults": [
+          {
+            "nosCode": "ELE/N1401",
+            "title": "Select, inspect and prepare electrical tools and materials",
+            "weightage": 20,
+            "score": 81,
+            "status": "Competent",
+            "performanceCriteria": [
+              {
+                "code": "PC1.1",
+                "description": "PC1.1: Verify insulation rating of hand tools before initiating work",
+                "status": "Competent",
+                "score": 91,
+                "evidence": "Verified through practical demonstration and verbal explanation."
+              },
+              {
+                "code": "PC1.2",
+                "description": "PC1.2: Select correct wire gauge (1.5 sq mm, 2.5 sq mm, 4 sq mm) according to circuit load specifications",
+                "status": "Competent",
+                "score": 75,
+                "evidence": "Verified through practical demonstration and verbal explanation."
+              },
+              {
+                "code": "PC1.3",
+                "description": "PC1.3: Inspect test instruments (multimeter, continuity tester) for zero error and calibration",
+                "status": "Competent",
+                "score": 83,
+                "evidence": "Verified through practical demonstration and verbal explanation."
+              },
+              {
+                "code": "PC1.4",
+                "description": "PC1.4: Prepare PVC conduits and junction boxes free from sharp burrs",
+                "status": "Competent",
+                "score": 75,
+                "evidence": "Verified through practical demonstration and verbal explanation."
+              }
+            ],
+            "feedback": "Demonstrates sound practical familiarity with Select, inspect and prepare electrical tools and materials. Standard safety precautions followed."
+          },
+          {
+            "nosCode": "ELE/N1402",
+            "title": "Install wiring, switchboards, and distribution systems",
+            "weightage": 40,
+            "score": 75,
+            "status": "Competent",
+            "performanceCriteria": [
+              {
+                "code": "PC2.1",
+                "description": "PC2.1: Strip cable ends without notching or damaging copper conductor strands",
+                "status": "Competent",
+                "score": 75,
+                "evidence": "Verified through practical demonstration and verbal explanation."
+              },
+              {
+                "code": "PC2.2",
+                "description": "PC2.2: Make secure mechanical and electrical connections using proper crimping lugs and terminal screws",
+                "status": "Competent",
+                "score": 75,
+                "evidence": "Verified through practical demonstration and verbal explanation."
+              },
+              {
+                "code": "PC2.3",
+                "description": "PC2.3: Route cables inside PVC/casing conduits maintaining minimum bend radius",
+                "status": "Competent",
+                "score": 75,
+                "evidence": "Verified through practical demonstration and verbal explanation."
+              },
+              {
+                "code": "PC2.4",
+                "description": "PC2.4: Mount and level switchboards, MCBs (Miniature Circuit Breakers), and socket outlets securely",
+                "status": "Competent",
+                "score": 75,
+                "evidence": "Verified through practical demonstration and verbal explanation."
+              },
+              {
+                "code": "PC2.5",
+                "description": "PC2.5: Connect earth lead securely to 3-pin sockets and main earthing terminal",
+                "status": "Competent",
+                "score": 75,
+                "evidence": "Verified through practical demonstration and verbal explanation."
+              }
+            ],
+            "feedback": "Requires minor theoretical reinforcement on standard procedures for Install wiring, switchboards, and distribution systems."
+          },
+          {
+            "nosCode": "ELE/N1403",
+            "title": "Perform basic earthing and circuit continuity testing",
+            "weightage": 25,
+            "score": 81,
+            "status": "Competent",
+            "performanceCriteria": [
+              {
+                "code": "PC3.1",
+                "description": "PC3.1: Carry out continuity test of Phase, Neutral, and Earth conductors using multimeter",
+                "status": "Competent",
+                "score": 91,
+                "evidence": "Verified through practical demonstration and verbal explanation."
+              },
+              {
+                "code": "PC3.2",
+                "description": "PC3.2: Verify polarity of live and neutral at all socket outlets",
+                "status": "Competent",
+                "score": 83,
+                "evidence": "Verified through practical demonstration and verbal explanation."
+              },
+              {
+                "code": "PC3.3",
+                "description": "PC3.3: Inspect earthing electrode and ensure proper connection to main distribution board",
+                "status": "Competent",
+                "score": 75,
+                "evidence": "Verified through practical demonstration and verbal explanation."
+              },
+              {
+                "code": "PC3.4",
+                "description": "PC3.4: Test insulation resistance between live-neutral and live-earth using megohmmeter",
+                "status": "Competent",
+                "score": 75,
+                "evidence": "Verified through practical demonstration and verbal explanation."
+              }
+            ],
+            "feedback": "Demonstrates sound practical familiarity with Perform basic earthing and circuit continuity testing. Standard safety precautions followed."
+          },
+          {
+            "nosCode": "ELE/N9901",
+            "title": "Health, safety, and emergency procedures at electrical work sites",
+            "weightage": 15,
+            "score": 75,
+            "status": "Competent",
+            "performanceCriteria": [
+              {
+                "code": "PC4.1",
+                "description": "PC4.1: Follow Lock-Out/Tag-Out (LOTO) and de-energization verification procedures prior to contact",
+                "status": "Competent",
+                "score": 75,
+                "evidence": "Verified through practical demonstration and verbal explanation."
+              },
+              {
+                "code": "PC4.2",
+                "description": "PC4.2: Don appropriate PPE (gloves, helmet, dielectric footwear) at all work times",
+                "status": "Competent",
+                "score": 75,
+                "evidence": "Verified through practical demonstration and verbal explanation."
+              },
+              {
+                "code": "PC4.3",
+                "description": "PC4.3: Demonstrate first-aid response for electric shock and knowledge of CO2/Dry Powder fire extinguishers",
+                "status": "Competent",
+                "score": 75,
+                "evidence": "Verified through practical demonstration and verbal explanation."
+              },
+              {
+                "code": "PC4.4",
+                "description": "PC4.4: Keep workplace clean, free of moisture and trip hazards",
+                "status": "Competent",
+                "score": 75,
+                "evidence": "Verified through practical demonstration and verbal explanation."
+              }
+            ],
+            "feedback": "Requires minor theoretical reinforcement on standard procedures for Health, safety, and emergency procedures at electrical work sites."
+          }
+        ],
+        "strengths": [
+          "Extensive hands-on tool handling and muscle memory acquired through informal experience.",
+          "Good awareness of basic workplace safety and electrical isolation procedures.",
+          "Clear articulation of troubleshooting steps under domestic fault conditions."
+        ],
+        "gapAreas": [
+          "Formal documentation and wiring schematic reading according to Indian Standards (IS 3043).",
+          "Exact mathematical calculations for cable derating factors under high ambient temperatures."
+        ],
+        "bridgeTrainingModules": [
+          "Module 3: Bureau of Indian Standards (BIS) Earthing & Protective Device Specifications",
+          "Module 5: Digital recordkeeping and formal job card maintenance"
+        ],
+        "assessorSignOffRequired": true
+      },
+      "assessorOverride": null,
+      "finalStatus": "Certified",
+      "signedOff": false,
+      "signedOffAt": null
+    }
+  ]
+}
