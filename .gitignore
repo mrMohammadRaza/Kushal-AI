@@ -6,6 +6,10 @@ node_modules/
 dist/
 build/
 */dist/
+.vite/
+*/.vite/
+.vite_cache/
+*/.vite_cache/
 
 # Python virtual environment and cache
 __pycache__/

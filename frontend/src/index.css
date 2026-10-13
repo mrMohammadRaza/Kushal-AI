@@ -1,197 +1,79 @@
+@import "tailwindcss";
+
 :root {
   --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
-  --font-mono: 'JetBrains Mono', monospace;
+  
+  /* Theme variables - Dark (default) */
+  --bg-app: #090d16;
+  --bg-surface: #111827;
+  --bg-surface-elevated: #1e293b;
+  --bg-surface-hover: #26354a;
+  --border-subtle: rgba(255, 255, 255, 0.1);
+  --border-focus: #3b82f6;
+  --text-primary: #f8fafc;
+  --text-secondary: #94a3b8;
+  --text-tertiary: #64748b;
+  
+  --shadow-soft-extruded: 8px 8px 18px rgba(0, 0, 0, 0.45), -5px -5px 12px rgba(255, 255, 255, 0.035);
+  --shadow-soft-pressed: inset 4px 4px 8px rgba(0, 0, 0, 0.5), inset -3px -3px 6px rgba(255, 255, 255, 0.04);
+}
 
-  /* Theme Colors */
-  --bg-dark: #0a0e17;
-  --bg-card: #111827;
-  --bg-card-hover: #172033;
-  --bg-surface: #1e293b;
-  --border-subtle: rgba(255, 255, 255, 0.08);
-  --border-glow: rgba(245, 158, 11, 0.25);
-
-  /* Brand Accents */
-  --saffron: #f59e0b;
-  --saffron-light: #fbbf24;
-  --saffron-glow: rgba(245, 158, 11, 0.15);
-  --navy-deep: #0b1329;
-  --emerald: #10b981;
-  --emerald-glow: rgba(16, 185, 129, 0.15);
-  --sky: #38bdf8;
-  --rose: #f43f5e;
-
-  /* Text Colors */
-  --text-main: #f8fafc;
-  --text-muted: #94a3b8;
-  --text-dim: #64748b;
+.light {
+  --bg-app: #f1f5f9;
+  --bg-surface: #ffffff;
+  --bg-surface-elevated: #f8fafc;
+  --bg-surface-hover: #e2e8f0;
+  --border-subtle: rgba(0, 0, 0, 0.1);
+  --border-focus: #2563eb;
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-tertiary: #64748b;
+  
+  --shadow-soft-extruded: 7px 7px 16px rgba(148, 163, 184, 0.4), -7px -7px 16px rgba(255, 255, 255, 0.95);
+  --shadow-soft-pressed: inset 4px 4px 8px rgba(148, 163, 184, 0.35), inset -4px -4px 8px rgba(255, 255, 255, 0.9);
 }
 
 * {
   box-sizing: border-box;
-  margin: 0;
-  padding: 0;
 }
 
 body {
   font-family: var(--font-sans);
-  background-color: var(--bg-dark);
-  color: var(--text-main);
+  background-color: var(--bg-app);
+  color: var(--text-primary);
   min-height: 100vh;
-  overflow-x: hidden;
-  background-image: 
-    radial-gradient(circle at 15% 15%, rgba(245, 158, 11, 0.05) 0%, transparent 40%),
-    radial-gradient(circle at 85% 35%, rgba(56, 189, 248, 0.05) 0%, transparent 40%),
-    radial-gradient(circle at 50% 85%, rgba(16, 185, 129, 0.04) 0%, transparent 50%);
+  margin: 0;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
 }
 
-/* Glassmorphism & Cards */
-.glass-panel {
-  background: rgba(17, 24, 39, 0.75);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid var(--border-subtle);
-  border-radius: 1rem;
+/* Accessible High-Contrast Focus Ring */
+*:focus-visible {
+  outline: 3px solid #3b82f6 !important;
+  outline-offset: 3px !important;
 }
 
-.glass-panel-elevated {
-  background: rgba(23, 32, 51, 0.85);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 1rem;
-  box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.5);
-}
-
-.glass-input {
-  background: rgba(15, 23, 42, 0.7);
-  border: 1px solid var(--border-subtle);
-  border-radius: 0.6rem;
-  color: var(--text-main);
-  padding: 0.65rem 1rem;
-  font-family: var(--font-sans);
-  transition: all 0.2s ease;
-  width: 100%;
-}
-
-.glass-input:focus {
-  outline: none;
-  border-color: var(--saffron);
-  box-shadow: 0 0 0 3px var(--saffron-glow);
-}
-
-/* Buttons */
-.btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  font-weight: 600;
-  font-size: 0.875rem;
-  padding: 0.625rem 1.25rem;
-  border-radius: 0.6rem;
+/* Soft UI Tactile utility classes */
+.soft-extruded {
+  box-shadow: var(--shadow-soft-extruded);
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  cursor: pointer;
-  border: none;
 }
 
-.btn-primary {
-  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-  color: #0b1329;
-  box-shadow: 0 4px 14px rgba(245, 158, 11, 0.3);
+.soft-extruded:active,
+.soft-pressed {
+  box-shadow: var(--shadow-soft-pressed);
 }
 
-.btn-primary:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 6px 20px rgba(245, 158, 11, 0.45);
+/* Audio Waveform Bar Animation */
+@keyframes soundwave {
+  0%, 100% {
+    height: 8px;
+  }
+  50% {
+    height: 38px;
+  }
 }
 
-.btn-secondary {
-  background: rgba(255, 255, 255, 0.08);
-  color: var(--text-main);
-  border: 1px solid var(--border-subtle);
-}
-
-.btn-secondary:hover {
-  background: rgba(255, 255, 255, 0.14);
-}
-
-.btn-success {
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-  color: #ffffff;
-  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.3);
-}
-
-.btn-success:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.45);
-}
-
-/* Badges */
-.badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  padding: 0.25rem 0.65rem;
-  border-radius: 9999px;
-  font-size: 0.75rem;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-}
-
-.badge-saffron {
-  background: var(--saffron-glow);
-  color: #fcd34d;
-  border: 1px solid rgba(245, 158, 11, 0.3);
-}
-
-.badge-emerald {
-  background: var(--emerald-glow);
-  color: #6ee7b7;
-  border: 1px solid rgba(16, 185, 129, 0.3);
-}
-
-.badge-sky {
-  background: rgba(56, 189, 248, 0.15);
-  color: #7dd3fc;
-  border: 1px solid rgba(56, 189, 248, 0.3);
-}
-
-.badge-rose {
-  background: rgba(244, 63, 94, 0.15);
-  color: #fda4af;
-  border: 1px solid rgba(244, 63, 94, 0.3);
-}
-
-/* Animations */
-@keyframes pulseGlow {
-  0%, 100% { opacity: 0.6; }
-  50% { opacity: 1; }
-}
-
-.pulse-glow {
-  animation: pulseGlow 2.5s infinite;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-.spin-icon {
-  animation: spin 1s linear infinite;
-}
-
-/* Custom Scrollbars */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-::-webkit-scrollbar-track {
-  background: rgba(0, 0, 0, 0.2);
-}
-::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.15);
-  border-radius: 3px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.25);
+.animate-wave-bar {
+  animation: soundwave 1.1s ease-in-out infinite;
 }
