@@ -3,13 +3,17 @@ import os
 import re
 from typing import Dict, Any, List, Optional
 
-DATA_PATH = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "..", "..", "..", "data", "nsqf_standards.json")
-)
+def _resolve_data_path():
+    local_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "data", "nsqf_standards.json"))
+    if os.path.exists(local_path):
+        return local_path
+    return os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "data", "nsqf_standards.json"))
+
+DATA_PATH = _resolve_data_path()
 
 class NSQFRAGEngine:
-    def __init__(self, data_path: str = DATA_PATH):
-        self.data_path = data_path
+    def __init__(self, data_path: str = None):
+        self.data_path = data_path or _resolve_data_path()
         self.standards: Dict[str, Any] = {}
         self.trades_by_id: Dict[str, Any] = {}
         self.corpus: List[Dict[str, Any]] = []

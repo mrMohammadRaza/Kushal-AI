@@ -1,14 +1,29 @@
 const fs = require('fs');
 const path = require('path');
 
-const AI_SERVICE_URL = process.env.AI_SERVICE_URL || 'http://127.0.0.1:8000';
-const STANDARDS_PATH = path.join(__dirname, '..', '..', '..', 'data', 'nsqf_standards.json');
+function getStandardsPath() {
+  const localPath = path.join(__dirname, '..', '..', 'data', 'nsqf_standards.json');
+  if (fs.existsSync(localPath)) return localPath;
+  return path.join(__dirname, '..', '..', '..', 'data', 'nsqf_standards.json');
+}
+
+/**
+ * Resolves the internal AI service URL from Vercel service binding or local environment.
+ */
+function getAiServiceUrl(endpoint = '') {
+  const base = process.env.AI_SERVICE_URL || 'http://127.0.0.1:8000';
+  const cleanBase = base.endsWith('/') ? base.slice(0, -1) : base;
+  const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+  return `${cleanBase}${cleanEndpoint}`;
+}
 
 /**
  * Calls FastAPI LangGraph assessment microservice.
  * Falls back to built-in NSQF rule synthesis if AI microservice is offline or initializing.
  */
 async function evaluateAssessment({ tradeId, candidateId, vivaAnswer, vivaScenarioId, imagePath, audioPath, assessorNotes }) {
+  const evaluateEndpoint = getAiServiceUrl('/api/evaluate');
+
   try {
     const payload = {
       trade_id: tradeId,
@@ -23,7 +38,7 @@ async function evaluateAssessment({ tradeId, candidateId, vivaAnswer, vivaScenar
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 6000); // 6s timeout
 
-    const response = await fetch(`${AI_SERVICE_URL}/api/evaluate`, {
+    const response = await fetch(evaluateEndpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
@@ -40,7 +55,7 @@ async function evaluateAssessment({ tradeId, candidateId, vivaAnswer, vivaScenar
       };
     }
   } catch (err) {
-    console.warn(`[AI Service] FastAPI microservice unavailable at ${AI_SERVICE_URL} (${err.message}). Using local high-fidelity NSQF co-pilot engine.`);
+    console.warn(`[AI Service] FastAPI microservice unavailable at ${evaluateEndpoint} (${err.message}). Using local high-fidelity NSQF co-pilot engine.`);
   }
 
   // Resilient Local Co-pilot Fallback Engine
@@ -48,7 +63,8 @@ async function evaluateAssessment({ tradeId, candidateId, vivaAnswer, vivaScenar
 }
 
 function evaluateLocally({ tradeId, candidateId, vivaAnswer, vivaScenarioId, imagePath, audioPath, assessorNotes }) {
-  const standardsData = JSON.parse(fs.readFileSync(STANDARDS_PATH, 'utf-8'));
+  const standardsPath = getStandardsPath();
+  const standardsData = JSON.parse(fs.readFileSync(standardsPath, 'utf-8'));
   const trade = standardsData.trades.find(t => t.id === tradeId) || standardsData.trades[0];
 
   const nosResults = [];

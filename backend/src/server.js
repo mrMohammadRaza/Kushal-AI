@@ -20,8 +20,8 @@ app.use(express.urlencoded({ extended: true }));
 // Serve uploaded media evidence statically
 app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
 
-// Health check endpoint
-app.get('/api/health', (req, res) => {
+// Health check endpoints (both /api/health and /health)
+app.get(['/api/health', '/health'], (req, res) => {
   res.json({
     status: 'online',
     service: 'Kaushal AI Core Backend',
@@ -41,6 +41,10 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: err.message || "Internal Server Error" });
 });
 
-app.listen(PORT, () => {
-  console.log(`[Kaushal AI Backend] Running on http://localhost:${PORT}`);
-});
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`[Kaushal AI Backend] Running on http://localhost:${PORT}`);
+  });
+}
+
+module.exports = app;
