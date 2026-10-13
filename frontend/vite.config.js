@@ -4,9 +4,6 @@ import react from '@vitejs/plugin-react';
 export default defineConfig({
   plugins: [react()],
   cacheDir: '.vite_cache',
-  optimizeDeps: {
-    include: ['react', 'react-dom', 'framer-motion', 'lucide-react', 'clsx', 'tailwind-merge'],
-  },
   server: {
     port: 3000,
     host: true,

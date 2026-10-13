@@ -1,4 +1,6 @@
-@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
 :root {
   --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
@@ -13,9 +15,6 @@
   --text-primary: #f8fafc;
   --text-secondary: #94a3b8;
   --text-tertiary: #64748b;
-  
-  --shadow-soft-extruded: 8px 8px 18px rgba(0, 0, 0, 0.45), -5px -5px 12px rgba(255, 255, 255, 0.035);
-  --shadow-soft-pressed: inset 4px 4px 8px rgba(0, 0, 0, 0.5), inset -3px -3px 6px rgba(255, 255, 255, 0.04);
 }
 
 .light {
@@ -28,9 +27,6 @@
   --text-primary: #0f172a;
   --text-secondary: #475569;
   --text-tertiary: #64748b;
-  
-  --shadow-soft-extruded: 7px 7px 16px rgba(148, 163, 184, 0.4), -7px -7px 16px rgba(255, 255, 255, 0.95);
-  --shadow-soft-pressed: inset 4px 4px 8px rgba(148, 163, 184, 0.35), inset -4px -4px 8px rgba(255, 255, 255, 0.9);
 }
 
 * {
@@ -55,25 +51,11 @@ body {
 
 /* Soft UI Tactile utility classes */
 .soft-extruded {
-  box-shadow: var(--shadow-soft-extruded);
+  box-shadow: 6px 6px 14px rgba(0, 0, 0, 0.45), -4px -4px 10px rgba(255, 255, 255, 0.04);
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .soft-extruded:active,
 .soft-pressed {
-  box-shadow: var(--shadow-soft-pressed);
-}
-
-/* Audio Waveform Bar Animation */
-@keyframes soundwave {
-  0%, 100% {
-    height: 8px;
-  }
-  50% {
-    height: 38px;
-  }
-}
-
-.animate-wave-bar {
-  animation: soundwave 1.1s ease-in-out infinite;
+  box-shadow: inset 3px 3px 6px rgba(0, 0, 0, 0.5), inset -2px -2px 5px rgba(255, 255, 255, 0.05);
 }
