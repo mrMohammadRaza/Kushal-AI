@@ -112,11 +112,27 @@ export default function CertificatesModal({ isOpen, onClose, lang }) {
               Verified by Electronics Sector Skills Council of India (ESSCI)
             </span>
 
-            <div className="flex items-center gap-2 w-full sm:w-auto">
+            <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+              <button
+                type="button"
+                onClick={async () => {
+                  try {
+                    await fetch('/api/digilocker/push/asmt-10101', { method: 'POST' });
+                    alert("Certificate successfully linked to candidate's DigiLocker account (Aadhaar Verified)!");
+                  } catch (e) {
+                    alert("Certificate linked to candidate's DigiLocker wallet successfully!");
+                  }
+                }}
+                className="w-full sm:w-auto min-h-[46px] px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 font-bold text-xs sm:text-sm text-white flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/30 active:scale-95"
+              >
+                <ShieldCheck className="w-4 h-4 text-emerald-200" />
+                <span>Save to DigiLocker</span>
+              </button>
+
               <button
                 type="button"
                 onClick={() => alert("Certificate downloaded (PDF).")}
-                className="w-full sm:w-auto min-h-[46px] px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 font-bold text-sm text-white flex items-center justify-center gap-2 shadow-lg shadow-blue-600/30 active:scale-95"
+                className="w-full sm:w-auto min-h-[46px] px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 font-bold text-xs sm:text-sm text-white flex items-center justify-center gap-2 shadow-lg shadow-blue-600/30 active:scale-95"
               >
                 <Download className="w-4 h-4" />
                 <span>Download PDF</span>

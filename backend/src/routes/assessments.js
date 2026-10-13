@@ -56,7 +56,8 @@ router.post('/evaluate', upload.fields([
       vivaAnswer,
       vivaScenarioId,
       assessorNotes,
-      assessorName
+      assessorName,
+      antiFraudAudit
     } = req.body;
 
     if (!candidateId || !tradeId) {
@@ -66,6 +67,13 @@ router.post('/evaluate', upload.fields([
     const practicalImage = req.files && req.files['practicalImage'] ? req.files['practicalImage'][0] : null;
     const audioViva = req.files && req.files['audioViva'] ? req.files['audioViva'][0] : null;
 
+    let parsedAntiFraud = null;
+    try {
+      parsedAntiFraud = typeof antiFraudAudit === 'string' ? JSON.parse(antiFraudAudit) : antiFraudAudit;
+    } catch (e) {
+      parsedAntiFraud = null;
+    }
+
     // Call AI Co-pilot Engine
     const aiEvaluation = await evaluateAssessment({
       tradeId,
@@ -74,7 +82,8 @@ router.post('/evaluate', upload.fields([
       vivaScenarioId,
       imagePath: practicalImage ? practicalImage.path : null,
       audioPath: audioViva ? audioViva.path : null,
-      assessorNotes
+      assessorNotes,
+      antiFraudAudit: parsedAntiFraud
     });
 
     const db = readDb();
@@ -93,6 +102,7 @@ router.post('/evaluate', upload.fields([
       },
       vivaInput: vivaAnswer || "",
       aiEvaluation,
+      antiFraudAudit: parsedAntiFraud || aiEvaluation.antiFraudAudit || null,
       assessorOverride: null,
       finalStatus: aiEvaluation.status,
       signedOff: false,

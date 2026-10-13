@@ -8,6 +8,7 @@ dotenv.config();
 const candidatesRoute = require('./routes/candidates');
 const tradesRoute = require('./routes/trades');
 const assessmentsRoute = require('./routes/assessments');
+const digilockerRoute = require('./routes/digilocker');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -34,6 +35,7 @@ app.get(['/api/health', '/health'], (req, res) => {
 app.use('/api/candidates', candidatesRoute);
 app.use('/api/trades', tradesRoute);
 app.use('/api/assessments', assessmentsRoute);
+app.use('/api/digilocker', digilockerRoute);
 
 // Global Error Handler
 app.use((err, req, res, next) => {

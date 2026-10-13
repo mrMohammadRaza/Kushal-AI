@@ -21,7 +21,7 @@ function getAiServiceUrl(endpoint = '') {
  * Calls FastAPI LangGraph assessment microservice.
  * Falls back to built-in NSQF rule synthesis if AI microservice is offline or initializing.
  */
-async function evaluateAssessment({ tradeId, candidateId, vivaAnswer, vivaScenarioId, imagePath, audioPath, assessorNotes }) {
+async function evaluateAssessment({ tradeId, candidateId, vivaAnswer, vivaScenarioId, imagePath, audioPath, assessorNotes, antiFraudAudit }) {
   const evaluateEndpoint = getAiServiceUrl('/api/evaluate');
 
   try {
@@ -32,7 +32,8 @@ async function evaluateAssessment({ tradeId, candidateId, vivaAnswer, vivaScenar
       viva_scenario_id: vivaScenarioId || "",
       image_path: imagePath || null,
       audio_path: audioPath || null,
-      assessor_notes: assessorNotes || ""
+      assessor_notes: assessorNotes || "",
+      anti_fraud_audit: antiFraudAudit || null
     };
 
     const controller = new AbortController();
