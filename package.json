@@ -2,14 +2,21 @@
   "name": "kaushal-ai-monorepo",
   "version": "1.0.0",
   "description": "Kaushal AI - AI-assisted Recognition of Prior Learning (RPL) Skill Assessment Tool mapped to NSQF standards (SIH Problem Statement: SIH26242)",
+  "workspaces": [
+    "backend",
+    "frontend"
+  ],
   "scripts": {
-    "install:all": "npm install && cd backend && npm install && cd ../frontend && npm install",
-    "dev:backend": "cd backend && npm run dev",
-    "dev:frontend": "cd frontend && npm run dev",
-    "dev:ai": "cd ai-service && python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload",
-    "start": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\""
+    "postinstall": "npm --prefix backend install && npm --prefix frontend install",
+    "install:all": "npm install && npm --prefix backend install && npm --prefix frontend install",
+    "build": "npm --prefix backend install && npm --prefix frontend install && npm --prefix frontend run build",
+    "start": "node backend/src/server.js",
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev:backend": "npm --prefix backend run dev",
+    "dev:frontend": "npm --prefix frontend run dev",
+    "dev:ai": "cd ai-service && python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
   },
-  "devDependencies": {
+  "dependencies": {
     "concurrently": "^8.2.2"
   },
   "keywords": [

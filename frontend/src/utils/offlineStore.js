@@ -45,7 +45,11 @@ export async function saveAssessmentOffline(assessmentData) {
     const store = tx.objectStore(STORE_QUEUE);
 
     const record = {
-      ...assessmentData,
+      candidateId: assessmentData.candidateProfile?.id || assessmentData.candidateId || 'cand-101',
+      trade: assessmentData.trade ? { id: assessmentData.trade.id, title: assessmentData.trade.title } : null,
+      voiceText: assessmentData.voiceText || '',
+      photo: typeof assessmentData.photo === 'string' ? assessmentData.photo : null,
+      antiFraudAudit: assessmentData.antiFraudAudit || null,
       status: 'pending',
       savedOfflineAt: new Date().toISOString(),
       retryCount: 0

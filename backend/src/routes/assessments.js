@@ -87,7 +87,7 @@ router.post('/evaluate', upload.fields([
     });
 
     const db = readDb();
-    const candidate = db.candidates.find(c => c.id === candidateId) || { name: "Candidate" };
+    const candidate = (db.candidates || []).find(c => c.id === candidateId) || { name: req.body.candidateName || "Candidate" };
 
     const assessmentRecord = {
       id: `asmt-${Date.now().toString().slice(-6)}`,
@@ -109,6 +109,9 @@ router.post('/evaluate', upload.fields([
       signedOffAt: null
     };
 
+    if (!Array.isArray(db.assessments)) {
+      db.assessments = [];
+    }
     db.assessments.unshift(assessmentRecord);
     writeDb(db);
 

@@ -30,6 +30,7 @@ export default function ViewB_EvidenceCapture({
   onSpeakPrompt
 }) {
   const [photoPreview, setPhotoPreview] = useState(null);
+  const [photoFile, setPhotoFile] = useState(null);
   const [isRecording, setIsRecording] = useState(false);
   const [voiceRecorded, setVoiceRecorded] = useState(false);
   const [voiceText, setVoiceText] = useState('');
@@ -40,6 +41,7 @@ export default function ViewB_EvidenceCapture({
   const handlePhotoUpload = (e) => {
     const file = e.target.files?.[0];
     if (file) {
+      setPhotoFile(file);
       setPhotoPreview(URL.createObjectURL(file));
       setErrorStatus(null);
     }
@@ -47,6 +49,7 @@ export default function ViewB_EvidenceCapture({
 
   const handleLoadSamplePhoto = () => {
     if (selectedTrade?.sampleEvidence) {
+      setPhotoFile(null);
       setPhotoPreview(selectedTrade.sampleEvidence);
       setErrorStatus(null);
     }
@@ -73,6 +76,7 @@ export default function ViewB_EvidenceCapture({
     onSubmitEvidence({
       trade: selectedTrade,
       photo: photoPreview,
+      photoFile: photoFile,
       voiceText: voiceText || (lang === 'hi' ? 'मौखिक विवरण दर्ज किया गया' : 'Voice explanation submitted')
     });
   };

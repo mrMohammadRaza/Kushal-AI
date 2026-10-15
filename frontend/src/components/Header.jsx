@@ -6,7 +6,10 @@ import {
   Moon, 
   Volume2, 
   ShieldCheck,
-  Check
+  Check,
+  UserCheck,
+  User,
+  Briefcase
 } from 'lucide-react';
 
 export default function Header({ 
@@ -15,6 +18,8 @@ export default function Header({
   theme, 
   setTheme, 
   onSpeakHelp,
+  candidateProfile,
+  onOpenLogin,
   t 
 }) {
   return (
@@ -55,10 +60,36 @@ export default function Header({
           </div>
         </div>
 
-        {/* Action Controls: Audio Assistant, Theme Toggle & Language Switcher */}
+        {/* Action Controls: Candidate Login, Audio Assistant, Theme Toggle & Language Switcher */}
         <div className="flex items-center gap-2 sm:gap-3" role="toolbar" aria-label="Accessibility and preferences controls">
           
-          {/* Audio Assistance Speaker Button (Crucial for Low-Literacy Informal Workers) */}
+          {/* Candidate Profile / Supabase Login Trigger */}
+          <button
+            type="button"
+            onClick={onOpenLogin}
+            className={`min-h-[44px] px-3 sm:px-3.5 rounded-xl flex items-center gap-2 font-bold text-xs transition-all duration-200 border ${
+              candidateProfile 
+                ? 'bg-blue-950/70 border-blue-500/50 text-blue-300 hover:bg-blue-900/60'
+                : 'bg-emerald-600 hover:bg-emerald-500 text-white border-emerald-400/40 shadow-lg shadow-emerald-500/20'
+            }`}
+          >
+            {candidateProfile ? (
+              <>
+                <User className="w-4 h-4 text-blue-400 flex-shrink-0" />
+                <span className="hidden sm:inline truncate max-w-[140px]">{candidateProfile.fullName || 'Candidate'}</span>
+                <span className="text-[10px] bg-blue-500/30 px-1.5 py-0.5 rounded text-blue-200 font-extrabold hidden md:inline">
+                  {candidateProfile.experienceYears}y Exp
+                </span>
+              </>
+            ) : (
+              <>
+                <UserCheck className="w-4 h-4" />
+                <span>{lang === 'hi' ? 'लॉगिन / कार्य विवरण' : 'Login / Job Details'}</span>
+              </>
+            )}
+          </button>
+
+          {/* Audio Assistance Speaker Button */}
           <button
             type="button"
             onClick={onSpeakHelp}
@@ -69,7 +100,7 @@ export default function Header({
             aria-label={lang === 'hi' ? "आवाज़ में निर्देश सुनें" : "Hear voice instructions"}
           >
             <Volume2 className="w-5 h-5 animate-bounce" />
-            <span className="hidden md:inline font-bold">{t.listenPrompt}</span>
+            <span className="hidden lg:inline font-bold">{t.listenPrompt}</span>
           </button>
 
           {/* Theme Toggle Button */}
@@ -89,7 +120,7 @@ export default function Header({
             )}
           </button>
 
-          {/* Prominent High-Contrast Fixed Language Toggle (English / Hindi) */}
+          {/* Prominent High-Contrast Fixed Language Toggle */}
           <div 
             className="flex items-center p-1 rounded-2xl border transition-all
               bg-slate-900/90 dark:bg-slate-900/90 light:bg-slate-200/90
