@@ -164,15 +164,15 @@ export default function AccessibilityTestScreen({
       initial={{ opacity: 0, y: 15 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -15 }}
-      className={`w-full max-w-5xl mx-auto px-4 py-8 space-y-6 ${contrastHigh ? 'bg-black text-yellow-300' : ''}`}
+      className={`w-full max-w-5xl mx-auto px-4 py-8 space-y-8 ${contrastHigh ? 'high-contrast-mode' : ''}`}
       aria-label="Hardware & Accessibility Diagnostic Station"
     >
       
       {/* 1. Candidate Confirmation Ribbon */}
-      <div className="p-6 rounded-3xl border border-blue-500/40 bg-gradient-to-r from-slate-950 via-slate-900 to-indigo-950 shadow-2xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+      <div className="card-3d p-6 sm:p-7 rounded-3xl border border-blue-500/40 bg-gradient-to-r from-slate-950/95 via-slate-900/95 to-indigo-950/90 shadow-[0_20px_50px_rgba(0,0,0,0.8)] flex flex-col md:flex-row items-start md:items-center justify-between gap-5">
         <div>
-          <div className="flex items-center gap-2 mb-1.5">
-            <span className="px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-blue-500/20 text-blue-300 border border-blue-500/40 flex items-center gap-1.5">
+          <div className="flex flex-wrap items-center gap-2 mb-2">
+            <span className="px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-blue-500/20 text-blue-300 border border-blue-500/40 flex items-center gap-1.5 shadow-sm">
               <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
               Verified RPL Candidate Onboarding
             </span>
@@ -181,25 +181,25 @@ export default function AccessibilityTestScreen({
             </span>
           </div>
 
-          <h2 className="text-2xl font-black text-white flex items-center gap-2">
+          <h2 className="text-2xl sm:text-3xl font-black text-white flex flex-wrap items-center gap-2.5">
             <span>{candidateData?.fullName || 'Ramesh Kumar Sharma'}</span>
-            <span className="text-xs font-medium text-slate-400 bg-slate-800 px-2.5 py-0.5 rounded-lg border border-slate-700">
+            <span className="text-xs font-medium text-slate-400 bg-slate-950 px-3 py-1 rounded-xl border border-slate-800">
               {candidateData?.email || 'ramesh.sharma@skillindia.rpl'}
             </span>
           </h2>
 
-          <div className="flex flex-wrap items-center gap-3 text-xs text-slate-300 mt-2">
-            <span className="flex items-center gap-1 text-amber-300 font-bold">
+          <div className="flex flex-wrap items-center gap-3 text-xs text-slate-300 mt-2.5">
+            <span className="flex items-center gap-1 text-amber-300 font-extrabold">
               <Briefcase className="w-3.5 h-3.5" />
               {candidateData?.tradeName || 'Assistant Electrician (Level 3)'}
             </span>
             <span>•</span>
-            <span className="text-emerald-400 font-semibold">
+            <span className="text-emerald-400 font-bold">
               {candidateData?.experienceYears || '5'} Yrs Informal Experience
             </span>
             <span>•</span>
-            <span className="flex items-center gap-1 text-slate-400">
-              <MapPin className="w-3.5 h-3.5" />
+            <span className="flex items-center gap-1 text-slate-300 font-medium">
+              <MapPin className="w-3.5 h-3.5 text-rose-400" />
               {candidateData?.workLocation || 'Varanasi, UP'}
             </span>
             <span>•</span>
@@ -210,12 +210,12 @@ export default function AccessibilityTestScreen({
         </div>
 
         {/* Diagnostic Scorecard Pill */}
-        <div className="flex items-center gap-3 bg-slate-900/90 p-3.5 rounded-2xl border border-slate-700 shadow-inner">
+        <div className="flex items-center gap-3 bg-slate-950/90 p-3.5 rounded-2xl border border-white/10 shadow-inner">
           <div className="text-right">
-            <span className="text-[10px] font-bold text-slate-400 block uppercase">Accessibility Checks</span>
+            <span className="text-[10px] font-black text-slate-400 block uppercase tracking-wider">Diagnostics</span>
             <span className="text-xl font-black text-emerald-400">{passCount} of 4 Ready</span>
           </div>
-          <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-black text-sm border border-emerald-500/30">
+          <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white flex items-center justify-center font-black text-sm shadow-lg shadow-emerald-500/30">
             {Math.round((passCount / 4) * 100)}%
           </div>
         </div>
@@ -225,58 +225,70 @@ export default function AccessibilityTestScreen({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
         {/* Test 1: Microphone & Audio Input */}
-        <div className={`p-6 rounded-3xl border transition-all ${
+        <div className={`card-3d p-6 rounded-3xl border transition-all ${
           micTested 
-            ? 'border-emerald-500/50 bg-slate-900/90' 
-            : 'border-slate-800 bg-slate-900/70'
+            ? 'border-emerald-500/60 shadow-[0_0_30px_rgba(16,185,129,0.2)]' 
+            : 'border-white/10'
         } space-y-4`}>
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${
-                micTested ? 'bg-emerald-500/20 text-emerald-400' : 'bg-blue-500/20 text-blue-400'
+            <div className="flex items-center gap-3">
+              <div className={`w-11 h-11 rounded-2xl flex items-center justify-center shadow-md ${
+                micTested ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40' : 'bg-blue-500/20 text-blue-400 border border-blue-500/40'
               }`}>
-                <Mic className="w-5 h-5" />
+                <Mic className="w-6 h-6" />
               </div>
               <div>
-                <h3 className="font-black text-white text-sm">
+                <h3 className="font-black text-white text-base">
                   1. {isHi ? 'माइक्रोफोन और आवाज जांच' : 'Microphone & Audio Input'}
                 </h3>
-                <span className="text-[11px] text-slate-400">
+                <span className="text-xs text-slate-400">
                   {isHi ? 'मौखिक परीक्षा हेतु इनपुट स्तर' : 'Clear speech input for viva voce'}
                 </span>
               </div>
             </div>
 
             {micTested && (
-              <span className="flex items-center gap-1 text-xs font-bold text-emerald-400 bg-emerald-500/10 px-2.5 py-0.5 rounded-full border border-emerald-500/30">
+              <span className="flex items-center gap-1 text-xs font-black text-emerald-400 bg-emerald-500/15 px-3 py-1 rounded-full border border-emerald-500/40 shadow-sm">
                 <CheckCircle2 className="w-3.5 h-3.5" />
                 Verified
               </span>
             )}
           </div>
 
-          {/* VU Volume Meter */}
-          <div className="space-y-1.5">
-            <div className="flex items-center justify-between text-[11px] text-slate-400 font-bold">
-              <span>Input Signal Level</span>
-              <span className="text-white">{audioLevel > 0 ? `${audioLevel}%` : 'Idle'}</span>
+          {/* Segmented LED VU Meter */}
+          <div className="space-y-2 p-3.5 rounded-2xl bg-slate-950/90 border border-slate-800">
+            <div className="flex items-center justify-between text-xs text-slate-400 font-bold">
+              <span>Acoustic Input Meter (Speech Decibels)</span>
+              <span className="text-white font-mono">{audioLevel > 0 ? `${audioLevel}%` : 'Idle'}</span>
             </div>
-            <div className="w-full h-3 bg-slate-950 rounded-full overflow-hidden p-0.5 border border-slate-800">
-              <motion.div 
-                animate={{ width: `${audioLevel}%` }}
-                className={`h-full rounded-full transition-all duration-100 ${
-                  audioLevel > 75 ? 'bg-amber-400' : (audioLevel > 30 ? 'bg-emerald-500' : 'bg-blue-500')
-                }`}
-              />
+            
+            <div className="grid grid-cols-16 gap-1 h-3.5">
+              {Array.from({ length: 16 }).map((_, idx) => {
+                const threshold = (idx + 1) * 6.25;
+                const isActive = audioLevel >= threshold;
+                const isHigh = idx >= 12;
+                const isMid = idx >= 8;
+
+                return (
+                  <div
+                    key={idx}
+                    className={`rounded-sm transition-all duration-75 ${
+                      isActive 
+                        ? (isHigh ? 'bg-rose-500 shadow-[0_0_6px_#f43f5e]' : isMid ? 'bg-amber-400 shadow-[0_0_6px_#f59e0b]' : 'bg-emerald-500 shadow-[0_0_6px_#10b981]')
+                        : 'bg-slate-900 border border-slate-800'
+                    }`}
+                  />
+                );
+              })}
             </div>
           </div>
 
-          <div className="flex items-center gap-3 pt-1">
+          <div className="pt-1">
             <button
               type="button"
               onClick={handleTestMic}
               disabled={isRecordingSample}
-              className="flex-1 min-h-[42px] rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md active:scale-95"
+              className="btn-3d w-full min-h-[44px] rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-extrabold text-xs flex items-center justify-center gap-2"
             >
               {isRecordingSample ? (
                 <>
@@ -294,38 +306,38 @@ export default function AccessibilityTestScreen({
         </div>
 
         {/* Test 2: Camera & Evidence Lighting */}
-        <div className={`p-6 rounded-3xl border transition-all ${
+        <div className={`card-3d p-6 rounded-3xl border transition-all ${
           cameraTested 
-            ? 'border-emerald-500/50 bg-slate-900/90' 
-            : 'border-slate-800 bg-slate-900/70'
+            ? 'border-emerald-500/60 shadow-[0_0_30px_rgba(16,185,129,0.2)]' 
+            : 'border-white/10'
         } space-y-4`}>
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${
-                cameraTested ? 'bg-emerald-500/20 text-emerald-400' : 'bg-blue-500/20 text-blue-400'
+            <div className="flex items-center gap-3">
+              <div className={`w-11 h-11 rounded-2xl flex items-center justify-center shadow-md ${
+                cameraTested ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40' : 'bg-blue-500/20 text-blue-400 border border-blue-500/40'
               }`}>
-                <Camera className="w-5 h-5" />
+                <Camera className="w-6 h-6" />
               </div>
               <div>
-                <h3 className="font-black text-white text-sm">
+                <h3 className="font-black text-white text-base">
                   2. {isHi ? 'कैमरा और प्रकाश (Lighting) जांच' : 'Camera & Workplace Lighting'}
                 </h3>
-                <span className="text-[11px] text-slate-400">
+                <span className="text-xs text-slate-400">
                   {isHi ? 'प्रैक्टिकल कार्य साक्ष्य फोटो हेतु' : 'Clear capture for visual evidence'}
                 </span>
               </div>
             </div>
 
             {cameraTested && (
-              <span className="flex items-center gap-1 text-xs font-bold text-emerald-400 bg-emerald-500/10 px-2.5 py-0.5 rounded-full border border-emerald-500/30">
+              <span className="flex items-center gap-1 text-xs font-black text-emerald-400 bg-emerald-500/15 px-3 py-1 rounded-full border border-emerald-500/40 shadow-sm">
                 <CheckCircle2 className="w-3.5 h-3.5" />
                 Verified
               </span>
             )}
           </div>
 
-          {/* Camera Viewfinder / Preview */}
-          <div className="relative w-full h-32 rounded-2xl bg-slate-950 border border-slate-800 overflow-hidden flex items-center justify-center">
+          {/* Camera Viewfinder / Preview with Laser Reticle */}
+          <div className="relative w-full h-36 rounded-2xl bg-slate-950 border border-slate-800 overflow-hidden flex items-center justify-center">
             {cameraActive ? (
               <video 
                 ref={videoRef} 
@@ -336,37 +348,38 @@ export default function AccessibilityTestScreen({
               />
             ) : (
               <div className="text-center p-4">
-                <Sun className="w-6 h-6 text-amber-400 mx-auto mb-1 opacity-80" />
-                <span className="text-[11px] text-slate-400 block font-medium">
-                  Workplace Lighting: <strong className="text-emerald-400">{lightingLux} Lux (Optimal)</strong>
+                <Sun className="w-7 h-7 text-amber-400 mx-auto mb-1.5 opacity-90 animate-pulse" />
+                <span className="text-xs text-slate-300 block font-semibold">
+                  Workplace Lighting: <strong className="text-emerald-400 font-mono">{lightingLux} Lux (Optimal Studio Level)</strong>
                 </span>
+                <span className="text-[10px] text-slate-500 block mt-0.5">High definition sensor calibration</span>
               </div>
             )}
 
             {capturedSnapshot && (
               <div className="absolute inset-0 bg-slate-950/90 flex items-center justify-center p-2">
-                <img src={capturedSnapshot} alt="Snapshot test" className="h-full object-cover rounded-lg border border-emerald-500" />
+                <img src={capturedSnapshot} alt="Snapshot test" className="h-full object-cover rounded-xl border-2 border-emerald-500 shadow-xl" />
               </div>
             )}
           </div>
 
-          <div className="flex items-center gap-3 pt-1">
+          <div className="pt-1">
             {!cameraActive ? (
               <button
                 type="button"
                 onClick={handleStartCamera}
-                className="flex-1 min-h-[42px] rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs flex items-center justify-center gap-1.5"
+                className="btn-3d w-full min-h-[44px] rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-extrabold text-xs flex items-center justify-center gap-1.5 border border-slate-700"
               >
-                <Camera className="w-3.5 h-3.5" />
+                <Camera className="w-4 h-4 text-blue-400" />
                 <span>Turn On Camera</span>
               </button>
             ) : (
               <button
                 type="button"
                 onClick={handleCaptureSnapshot}
-                className="flex-1 min-h-[42px] rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-md active:scale-95"
+                className="btn-3d w-full min-h-[44px] rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-xs flex items-center justify-center gap-1.5"
               >
-                <CheckCircle2 className="w-3.5 h-3.5" />
+                <CheckCircle2 className="w-4 h-4" />
                 <span>Take Test Photo & Verify</span>
               </button>
             )}
@@ -374,30 +387,30 @@ export default function AccessibilityTestScreen({
         </div>
 
         {/* Test 3: Audio Voice Guidance & Screen Reader */}
-        <div className={`p-6 rounded-3xl border transition-all ${
+        <div className={`card-3d p-6 rounded-3xl border transition-all ${
           ttsTested 
-            ? 'border-emerald-500/50 bg-slate-900/90' 
-            : 'border-slate-800 bg-slate-900/70'
+            ? 'border-emerald-500/60 shadow-[0_0_30px_rgba(16,185,129,0.2)]' 
+            : 'border-white/10'
         } space-y-4`}>
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${
-                ttsTested ? 'bg-emerald-500/20 text-emerald-400' : 'bg-blue-500/20 text-blue-400'
+            <div className="flex items-center gap-3">
+              <div className={`w-11 h-11 rounded-2xl flex items-center justify-center shadow-md ${
+                ttsTested ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40' : 'bg-blue-500/20 text-blue-400 border border-blue-500/40'
               }`}>
-                <Volume2 className="w-5 h-5" />
+                <Volume2 className="w-6 h-6" />
               </div>
               <div>
-                <h3 className="font-black text-white text-sm">
+                <h3 className="font-black text-white text-base">
                   3. {isHi ? 'ऑडियो वॉइस गाइड (स्पीकर)' : 'Voice Guidance & Screen Reader'}
                 </h3>
-                <span className="text-[11px] text-slate-400">
+                <span className="text-xs text-slate-400">
                   {isHi ? 'निर्देश बोलकर सुनाने की सुविधा' : 'Text-to-speech assistive prompt'}
                 </span>
               </div>
             </div>
 
             {ttsTested && (
-              <span className="flex items-center gap-1 text-xs font-bold text-emerald-400 bg-emerald-500/10 px-2.5 py-0.5 rounded-full border border-emerald-500/30">
+              <span className="flex items-center gap-1 text-xs font-black text-emerald-400 bg-emerald-500/15 px-3 py-1 rounded-full border border-emerald-500/40 shadow-sm">
                 <CheckCircle2 className="w-3.5 h-3.5" />
                 Ready
               </span>
@@ -405,30 +418,30 @@ export default function AccessibilityTestScreen({
           </div>
 
           {/* Accessibility Accommodation Toggles */}
-          <div className="p-3 rounded-2xl bg-slate-950 border border-slate-800 grid grid-cols-2 gap-2 text-xs">
+          <div className="p-3.5 rounded-2xl bg-slate-950/90 border border-slate-800 grid grid-cols-2 gap-2.5 text-xs">
             <button
               type="button"
               onClick={() => setContrastHigh(!contrastHigh)}
-              className={`p-2 rounded-xl border flex items-center justify-center gap-1.5 font-bold transition-all ${
+              className={`p-2.5 rounded-xl border flex items-center justify-center gap-2 font-black transition-all ${
                 contrastHigh 
-                  ? 'bg-yellow-400 text-black border-yellow-500' 
-                  : 'bg-slate-900 text-slate-300 border-slate-700'
+                  ? 'bg-yellow-400 text-black border-yellow-500 shadow-md scale-100' 
+                  : 'bg-slate-900 text-slate-300 border-slate-700 hover:border-slate-600'
               }`}
             >
-              <Eye className="w-3.5 h-3.5" />
+              <Eye className="w-4 h-4" />
               <span>High Contrast</span>
             </button>
 
             <button
               type="button"
               onClick={() => setLargeFont(!largeFont)}
-              className={`p-2 rounded-xl border flex items-center justify-center gap-1.5 font-bold transition-all ${
+              className={`p-2.5 rounded-xl border flex items-center justify-center gap-2 font-black transition-all ${
                 largeFont 
-                  ? 'bg-blue-600 text-white border-blue-400' 
-                  : 'bg-slate-900 text-slate-300 border-slate-700'
+                  ? 'bg-blue-600 text-white border-blue-400 shadow-md scale-100' 
+                  : 'bg-slate-900 text-slate-300 border-slate-700 hover:border-slate-600'
               }`}
             >
-              <Sliders className="w-3.5 h-3.5" />
+              <Sliders className="w-4 h-4" />
               <span>Large Text (125%)</span>
             </button>
           </div>
@@ -437,43 +450,43 @@ export default function AccessibilityTestScreen({
             type="button"
             onClick={handleTestTts}
             disabled={isPlayingTts}
-            className="w-full min-h-[42px] rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md active:scale-95"
+            className="btn-3d w-full min-h-[44px] rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-extrabold text-xs flex items-center justify-center gap-2"
           >
-            <Volume2 className={`w-3.5 h-3.5 ${isPlayingTts ? 'animate-bounce' : ''}`} />
+            <Volume2 className={`w-4 h-4 ${isPlayingTts ? 'animate-bounce text-amber-300' : ''}`} />
             <span>{isPlayingTts ? 'Playing Voice Prompt...' : 'Listen to Test Audio Prompt'}</span>
           </button>
         </div>
 
         {/* Test 4: Supabase Edge Cloud & Latency Check */}
-        <div className={`p-6 rounded-3xl border transition-all ${
+        <div className={`card-3d p-6 rounded-3xl border transition-all ${
           networkTested 
-            ? 'border-emerald-500/50 bg-slate-900/90' 
-            : 'border-slate-800 bg-slate-900/70'
+            ? 'border-emerald-500/60 shadow-[0_0_30px_rgba(16,185,129,0.2)]' 
+            : 'border-white/10'
         } space-y-4`}>
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
-                <Wifi className="w-5 h-5" />
+            <div className="flex items-center gap-3">
+              <div className="w-11 h-11 rounded-2xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 flex items-center justify-center shadow-md">
+                <Wifi className="w-6 h-6" />
               </div>
               <div>
-                <h3 className="font-black text-white text-sm">
+                <h3 className="font-black text-white text-base">
                   4. {isHi ? 'क्लाउड और ऑफलाइन नेटवर्क' : 'Supabase Cloud & Offline Ready'}
                 </h3>
-                <span className="text-[11px] text-slate-400">
+                <span className="text-xs text-slate-400">
                   {isHi ? 'डेटाबेस व एआई संचार गति' : 'Edge latency & IndexedDB buffer'}
                 </span>
               </div>
             </div>
 
             {networkTested && (
-              <span className="flex items-center gap-1 text-xs font-bold text-emerald-400 bg-emerald-500/10 px-2.5 py-0.5 rounded-full border border-emerald-500/30">
+              <span className="flex items-center gap-1 text-xs font-black text-emerald-400 bg-emerald-500/15 px-3 py-1 rounded-full border border-emerald-500/40 shadow-sm">
                 <CheckCircle2 className="w-3.5 h-3.5" />
                 Active
               </span>
             )}
           </div>
 
-          <div className="p-3.5 rounded-2xl bg-slate-950 border border-slate-800 space-y-2 text-xs">
+          <div className="p-3.5 rounded-2xl bg-slate-950/90 border border-slate-800 space-y-2 text-xs">
             <div className="flex items-center justify-between">
               <span className="text-slate-400">Supabase Project Ref:</span>
               <span className="font-mono text-blue-300 font-bold">tmdrouofryymaqvxfhrx</span>
@@ -488,7 +501,7 @@ export default function AccessibilityTestScreen({
             </div>
           </div>
 
-          <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-[11px] font-medium flex items-center gap-2">
+          <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs font-medium flex items-center gap-2">
             <Zap className="w-4 h-4 text-emerald-400 flex-shrink-0" />
             <span>Connection verified for real-time Gemini multimodal viva upload.</span>
           </div>
@@ -497,12 +510,12 @@ export default function AccessibilityTestScreen({
       </div>
 
       {/* 3. Action Bar: Complete Diagnostic and Launch Assessment */}
-      <div className="p-6 rounded-3xl border border-slate-800 bg-slate-950/90 shadow-2xl flex flex-col sm:flex-row items-center justify-between gap-4">
+      <div className="card-3d p-6 sm:p-7 rounded-3xl border border-white/10 shadow-2xl flex flex-col sm:flex-row items-center justify-between gap-5">
         <div>
           <span className="text-xs font-black uppercase tracking-wider text-slate-400 block">
             {allPassed ? '✓ All Diagnostics Completed' : 'Preliminary Accessibility Status:'}
           </span>
-          <p className="text-sm font-bold text-white mt-0.5">
+          <p className="text-sm font-black text-white mt-0.5">
             {allPassed 
               ? (isHi ? 'सभी हार्डवेयर और सुलभता परीक्षण सफल रहे। आप परीक्षा शुरू करने के लिए तैयार हैं!' : 'All 4 diagnostics completed. Hardware is ready for NSQF assessment!')
               : (isHi ? 'कृपया ऊपर दिए गए परीक्षणों की पुष्टि करें।' : 'Complete and confirm the checks above to launch.')}
@@ -513,7 +526,7 @@ export default function AccessibilityTestScreen({
           <button
             type="button"
             onClick={onBackToLogin}
-            className="min-h-[46px] px-4 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs"
+            className="min-h-[48px] px-5 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs border border-slate-700 active:scale-95 transition-all"
           >
             {isHi ? 'लॉगिन बदलें' : 'Edit Job Details'}
           </button>
@@ -526,7 +539,7 @@ export default function AccessibilityTestScreen({
               lightingLux,
               candidate: candidateData
             })}
-            className="flex-1 sm:flex-initial min-h-[46px] px-7 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white font-black text-xs flex items-center justify-center gap-2 shadow-xl shadow-emerald-600/30 active:scale-95 transition-all"
+            className="btn-3d-emerald flex-1 sm:flex-initial min-h-[48px] px-8 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white font-black text-xs flex items-center justify-center gap-2.5"
           >
             <span>{isHi ? 'प्रैक्टिकल परीक्षा शुरू करें' : 'Proceed to Practical Assessment'}</span>
             <ArrowRight className="w-4 h-4" />

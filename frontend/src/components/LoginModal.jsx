@@ -157,17 +157,17 @@ export default function LoginModal({ isOpen, onClose, onLoginSuccess, lang = 'hi
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-xl overflow-y-auto">
       <motion.div 
-        initial={{ opacity: 0, scale: 0.95, y: 15 }}
+        initial={{ opacity: 0, scale: 0.94, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.95, y: 15 }}
-        className="relative w-full max-w-2xl my-6 rounded-3xl border border-slate-700 bg-slate-900 shadow-2xl overflow-hidden"
+        exit={{ opacity: 0, scale: 0.94, y: 20 }}
+        className="relative w-full max-w-2xl my-6 rounded-3xl border border-white/10 card-3d shadow-[0_25px_60px_-15px_rgba(0,0,0,0.9)] overflow-hidden"
       >
         {/* Header Banner */}
-        <div className="p-6 bg-gradient-to-r from-blue-950 via-slate-900 to-indigo-950 border-b border-slate-800 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-2xl bg-blue-600 text-white flex items-center justify-center shadow-lg shadow-blue-500/30">
+        <div className="p-6 bg-gradient-to-r from-blue-950/90 via-slate-900 to-indigo-950/90 border-b border-slate-800 flex items-center justify-between">
+          <div className="flex items-center gap-3.5">
+            <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 text-white flex items-center justify-center shadow-lg shadow-blue-500/40 border border-blue-400/40">
               <ShieldCheck className="w-6 h-6" />
             </div>
             <div>
@@ -180,7 +180,7 @@ export default function LoginModal({ isOpen, onClose, onLoginSuccess, lang = 'hi
                   SIH26242 Portal
                 </span>
               </div>
-              <h2 className="text-xl font-black text-white mt-0.5">
+              <h2 className="text-xl font-black text-white mt-0.5 tracking-tight">
                 {isHi ? 'उम्मीदवार लॉगिन और कार्य विवरण' : 'Candidate Login & Job Verification'}
               </h2>
             </div>
@@ -189,14 +189,14 @@ export default function LoginModal({ isOpen, onClose, onLoginSuccess, lang = 'hi
           <button 
             type="button" 
             onClick={onClose}
-            className="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center transition-all"
+            className="w-9 h-9 rounded-xl bg-slate-950/80 hover:bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center transition-all border border-slate-700 shadow-sm"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* Navigation Tabs */}
-        <div className="flex border-b border-slate-800 px-6 pt-3 bg-slate-950/60 gap-4 text-xs font-bold">
+        <div className="flex border-b border-slate-800 px-6 pt-3 bg-slate-950/80 gap-4 text-xs font-black">
           <button
             type="button"
             onClick={() => setTab('login')}
@@ -472,7 +472,7 @@ export default function LoginModal({ isOpen, onClose, onLoginSuccess, lang = 'hi
               <button
                 type="submit"
                 disabled={loading}
-                className="min-h-[46px] px-6 rounded-2xl bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-black text-xs flex items-center justify-center gap-2 shadow-lg shadow-blue-500/30 active:scale-95 transition-all"
+                className="btn-3d min-h-[46px] px-6 rounded-2xl bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-black text-xs flex items-center justify-center gap-2"
               >
                 <span>{loading ? 'Verifying with Supabase...' : (isHi ? 'विवरण की पुष्टि करें और आगे बढ़ें' : 'Confirm & Proceed to Test')}</span>
                 <ArrowRight className="w-4 h-4" />

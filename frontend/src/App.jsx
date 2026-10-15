@@ -315,10 +315,10 @@ export default function App() {
             <button
               type="button"
               onClick={() => setCurrentView('dashboard')}
-              className={`min-h-[36px] px-3 py-1.5 rounded-xl font-bold flex items-center gap-1.5 transition-all ${
+              className={`min-h-[36px] px-3.5 py-1.5 rounded-xl font-extrabold flex items-center gap-1.5 transition-all ${
                 currentView === 'dashboard'
-                  ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30 ring-2 ring-blue-400/30'
-                  : 'bg-slate-900 text-slate-400 hover:text-white border border-slate-800'
+                  ? 'btn-3d bg-blue-600 text-white shadow-lg shadow-blue-600/40 ring-2 ring-blue-400/40'
+                  : 'bg-slate-900/90 text-slate-400 hover:text-white border border-slate-800'
               }`}
             >
               <span>View A: Trades</span>
@@ -328,10 +328,10 @@ export default function App() {
             <button
               type="button"
               onClick={() => setCurrentView('accessibility')}
-              className={`min-h-[36px] px-3 py-1.5 rounded-xl font-bold flex items-center gap-1.5 transition-all ${
+              className={`min-h-[36px] px-3.5 py-1.5 rounded-xl font-extrabold flex items-center gap-1.5 transition-all ${
                 currentView === 'accessibility'
-                  ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30 ring-2 ring-emerald-400/30'
-                  : 'bg-slate-900 text-emerald-400 hover:text-white border border-emerald-500/30'
+                  ? 'btn-3d-emerald bg-emerald-600 text-white shadow-lg shadow-emerald-600/40 ring-2 ring-emerald-400/40'
+                  : 'bg-slate-900/90 text-emerald-400 hover:text-white border border-emerald-500/40'
               }`}
             >
               <Sliders className="w-3.5 h-3.5" />
@@ -341,10 +341,10 @@ export default function App() {
             <button
               type="button"
               onClick={() => setCurrentView('evidence')}
-              className={`min-h-[36px] px-3 py-1.5 rounded-xl font-bold flex items-center gap-1.5 transition-all ${
+              className={`min-h-[36px] px-3.5 py-1.5 rounded-xl font-extrabold flex items-center gap-1.5 transition-all ${
                 currentView === 'evidence'
-                  ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30 ring-2 ring-blue-400/30'
-                  : 'bg-slate-900 text-slate-400 hover:text-white border border-slate-800'
+                  ? 'btn-3d bg-blue-600 text-white shadow-lg shadow-blue-600/40 ring-2 ring-blue-400/40'
+                  : 'bg-slate-900/90 text-slate-400 hover:text-white border border-slate-800'
               }`}
             >
               <span>View B: Evidence</span>
@@ -353,10 +353,10 @@ export default function App() {
             <button
               type="button"
               onClick={() => setCurrentView('assessor')}
-              className={`min-h-[36px] px-3 py-1.5 rounded-xl font-bold flex items-center gap-1.5 transition-all ${
+              className={`min-h-[36px] px-3.5 py-1.5 rounded-xl font-extrabold flex items-center gap-1.5 transition-all ${
                 currentView === 'assessor'
-                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30 ring-2 ring-indigo-400/30'
-                  : 'bg-slate-900 text-indigo-400 hover:text-white border border-indigo-500/40'
+                  ? 'btn-3d bg-indigo-600 text-white shadow-lg shadow-indigo-600/40 ring-2 ring-indigo-400/40'
+                  : 'bg-slate-900/90 text-indigo-400 hover:text-white border border-indigo-500/40'
               }`}
             >
               <Eye className="w-3.5 h-3.5" />
@@ -380,6 +380,9 @@ export default function App() {
               onSelectTrade={handleSelectTrade}
               onOpenCertificates={() => setIsCertModalOpen(true)}
               onSpeakPrompt={() => speakInstructions()}
+              candidateProfile={candidateProfile}
+              onOpenLogin={() => setIsLoginModalOpen(true)}
+              onOpenAccessibility={() => setCurrentView('accessibility')}
             />
           )}
 
