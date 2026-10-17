@@ -89,6 +89,27 @@ router.get('/download/:assessmentId', authenticateToken, (req, res) => {
   try {
     const { assessmentId } = req.params;
 
+    const assessment = db.prepare('SELECT candidate_id, assigned_assessor_id, center_id FROM assessment_cases WHERE id = ?').get(assessmentId);
+    if (!assessment) {
+      return res.status(404).json({ error: "Assessment case not found." });
+    }
+
+    // Object-level authorization checks
+    if (req.user.role === 'candidate') {
+      const profile = db.prepare('SELECT id FROM candidate_profiles WHERE user_id = ?').get(req.user.id);
+      if (!profile || profile.id !== assessment.candidate_id) {
+        return res.status(403).json({ error: "Access forbidden: Candidates may only download their own assessment reports." });
+      }
+    } else if (req.user.role === 'assessor') {
+      if (assessment.assigned_assessor_id !== req.user.id) {
+        return res.status(403).json({ error: "Access forbidden: Assessor is not assigned to this candidate assessment." });
+      }
+    } else if (req.user.role === 'center_manager') {
+      if (assessment.center_id !== req.user.center_id) {
+        return res.status(403).json({ error: "Access forbidden: Assessment report does not belong to your center." });
+      }
+    }
+
     const report = db.prepare('SELECT * FROM reports WHERE assessment_id = ? ORDER BY released_at DESC').get(assessmentId);
     if (!report || !report.pdf_path) {
       return res.status(404).json({ error: "Report PDF has not been generated for this assessment." });
@@ -98,6 +119,15 @@ router.get('/download/:assessmentId', authenticateToken, (req, res) => {
     if (!fs.existsSync(fullPath)) {
       return res.status(404).json({ error: "Report file is missing from storage." });
     }
+
+    logAuditEvent({
+      entityType: 'report',
+      entityId: report.id,
+      userId: req.user.id,
+      userRole: req.user.role,
+      action: 'REPORT_PDF_DOWNLOADED',
+      details: { assessmentId, reportId: report.id }
+    });
 
     res.download(fullPath);
   } catch (err) {

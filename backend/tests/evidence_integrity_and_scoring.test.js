@@ -18,6 +18,7 @@ describe('Evidence Integrity & Objective Competency Scoring', () => {
   it('RULE VERIFICATION: Missing evidence must NEVER generate a fabricated pass', async () => {
     const res = await request(app)
       .post('/api/assessments/evaluate')
+      .set('Authorization', `Bearer ${assessorToken}`)
       .field('candidateId', 'cand-101')
       .field('tradeId', 'electrician-l3')
       .field('vivaAnswer', ''); // Empty viva and no photo
@@ -42,6 +43,7 @@ describe('Evidence Integrity & Objective Competency Scoring', () => {
   it('RULE VERIFICATION: Oral-only evidence must require practical test, never certified pass', async () => {
     const res = await request(app)
       .post('/api/assessments/evaluate')
+      .set('Authorization', `Bearer ${assessorToken}`)
       .field('candidateId', 'cand-101')
       .field('tradeId', 'electrician-l3')
       .field('vivaAnswer', 'Maine 3-phase line ka main isolator cut kiya aur multimeter se continuity check kiya.');
@@ -62,6 +64,7 @@ describe('Evidence Integrity & Objective Competency Scoring', () => {
 
     const res = await request(app)
       .post('/api/assessments/evaluate')
+      .set('Authorization', `Bearer ${assessorToken}`)
       .field('candidateId', 'cand-101')
       .field('tradeId', 'electrician-l3')
       .field('vivaAnswer', 'Tested insulation resistance between live and earth terminals.')
@@ -83,6 +86,7 @@ describe('Evidence Integrity & Objective Competency Scoring', () => {
   it('RULE VERIFICATION: Granular NOS criteria must be mapped in competency_assessments table', async () => {
     const res = await request(app)
       .post('/api/assessments/evaluate')
+      .set('Authorization', `Bearer ${assessorToken}`)
       .field('candidateId', 'cand-101')
       .field('tradeId', 'electrician-l3')
       .field('vivaAnswer', 'MCB wiring with proper copper conductor gauge and earthing continuity test.');

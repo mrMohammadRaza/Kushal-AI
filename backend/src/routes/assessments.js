@@ -46,14 +46,14 @@ const upload = multer({
 
 /**
  * GET /api/assessments
- * List assessments with server-enforced role filtering.
+ * List assessments with server-enforced role and center filtering.
  */
-router.get('/', optionalAuth, (req, res) => {
+router.get('/', authenticateToken, (req, res) => {
   try {
     let assessments;
 
-    if (req.user && req.user.role === 'candidate') {
-      // Candidate sees only their own assessments
+    if (req.user.role === 'candidate') {
+      // Candidate sees ONLY their own assessments
       const profile = db.prepare('SELECT id FROM candidate_profiles WHERE user_id = ?').get(req.user.id);
       const candidateId = profile ? profile.id : null;
       assessments = db.prepare(`
@@ -64,8 +64,50 @@ router.get('/', optionalAuth, (req, res) => {
         WHERE a.candidate_id = ?
         ORDER BY a.created_at DESC
       `).all(candidateId);
+    } else if (req.user.role === 'assessor') {
+      // Assessor sees ONLY assessments explicitly assigned to them
+      const statusFilter = req.query.status;
+      let query = `
+        SELECT a.*, c.full_name as candidate_name, o.trade as trade_title, o.nsqf_level,
+               u.full_name as assessor_name
+        FROM assessment_cases a
+        JOIN candidate_profiles c ON a.candidate_id = c.id
+        JOIN occupations o ON a.trade_id = o.id
+        LEFT JOIN users u ON a.assigned_assessor_id = u.id
+        WHERE a.assigned_assessor_id = ?
+      `;
+      const params = [req.user.id];
+
+      if (statusFilter) {
+        query += ` AND a.status = ?`;
+        params.push(statusFilter);
+      }
+
+      query += ` ORDER BY a.created_at DESC LIMIT 50`;
+      assessments = db.prepare(query).all(...params);
+    } else if (req.user.role === 'center_manager') {
+      // Center manager sees ONLY assessments belonging to their authorized assessment center
+      const statusFilter = req.query.status;
+      let query = `
+        SELECT a.*, c.full_name as candidate_name, o.trade as trade_title, o.nsqf_level,
+               u.full_name as assessor_name
+        FROM assessment_cases a
+        JOIN candidate_profiles c ON a.candidate_id = c.id
+        JOIN occupations o ON a.trade_id = o.id
+        LEFT JOIN users u ON a.assigned_assessor_id = u.id
+        WHERE a.center_id = ?
+      `;
+      const params = [req.user.center_id || 'center-01'];
+
+      if (statusFilter) {
+        query += ` AND a.status = ?`;
+        params.push(statusFilter);
+      }
+
+      query += ` ORDER BY a.created_at DESC LIMIT 50`;
+      assessments = db.prepare(query).all(...params);
     } else {
-      // Assessors, Managers, Admins, Auditors see queue
+      // Platform Admins and Quality Auditors have cross-center oversight
       const statusFilter = req.query.status;
       let query = `
         SELECT a.*, c.full_name as candidate_name, o.trade as trade_title, o.nsqf_level,
@@ -101,8 +143,9 @@ router.get('/', optionalAuth, (req, res) => {
 /**
  * GET /api/assessments/:id
  * Retrieve comprehensive assessment dossier with evidence, competencies, and decision history.
+ * Enforces strict object-level authorization across Candidate, Assessor, and Center Manager.
  */
-router.get('/:id', optionalAuth, (req, res) => {
+router.get('/:id', authenticateToken, (req, res) => {
   try {
     const assessment = db.prepare(`
       SELECT a.*, c.full_name as candidate_name, c.phone, c.district, c.state, c.aadhaar_last4,
@@ -119,11 +162,25 @@ router.get('/:id', optionalAuth, (req, res) => {
       return res.status(404).json({ error: "Assessment case not found." });
     }
 
-    // Role verification: candidate can only inspect their own dossier
-    if (req.user && req.user.role === 'candidate') {
+    // 1. Candidate authorization: Can only inspect their own dossier
+    if (req.user.role === 'candidate') {
       const profile = db.prepare('SELECT id FROM candidate_profiles WHERE user_id = ?').get(req.user.id);
       if (!profile || profile.id !== assessment.candidate_id) {
-        return res.status(403).json({ error: "Access denied to candidate record." });
+        return res.status(403).json({ error: "Access forbidden: Candidate is not authorized to view this assessment dossier." });
+      }
+    }
+
+    // 2. Assessor authorization: Can only inspect assessments assigned to them
+    if (req.user.role === 'assessor') {
+      if (assessment.assigned_assessor_id !== req.user.id) {
+        return res.status(403).json({ error: "Access forbidden: Assessor is not assigned to this candidate assessment case." });
+      }
+    }
+
+    // 3. Center Manager authorization: Can only inspect assessments at their center
+    if (req.user.role === 'center_manager') {
+      if (assessment.center_id !== req.user.center_id) {
+        return res.status(403).json({ error: "Access forbidden: Assessment case does not belong to your assigned center." });
       }
     }
 
@@ -172,7 +229,7 @@ router.get('/:id', optionalAuth, (req, res) => {
  * Ingests multimodal evidence, computes SHA-256 integrity hashes, triggers AI evaluation,
  * and persists assessment case to database with human-in-the-loop requirement.
  */
-router.post('/evaluate', optionalAuth, upload.fields([
+router.post('/evaluate', authenticateToken, upload.fields([
   { name: 'practicalImage', maxCount: 1 },
   { name: 'audioViva', maxCount: 1 }
 ]), async (req, res) => {
@@ -186,11 +243,26 @@ router.post('/evaluate', optionalAuth, upload.fields([
       antiFraudAudit
     } = req.body;
 
-    // Determine candidate ID from authenticated session or validated body
+    // Determine and enforce candidate ID from authenticated session
     let candidateId = bodyCandidateId;
-    if (req.user && req.user.role === 'candidate') {
+    if (req.user.role === 'candidate') {
       const profile = db.prepare('SELECT id FROM candidate_profiles WHERE user_id = ?').get(req.user.id);
-      if (profile) candidateId = profile.id;
+      if (!profile) {
+        return res.status(403).json({ error: "No candidate profile associated with this authenticated account." });
+      }
+      if (bodyCandidateId && bodyCandidateId !== profile.id) {
+        return res.status(403).json({ error: "Access forbidden: Candidate cannot submit evidence on behalf of another candidate." });
+      }
+      candidateId = profile.id;
+    } else {
+      // Assessor or Admin submitting on behalf of a candidate
+      if (!candidateId) {
+        return res.status(400).json({ error: "candidateId is required when submitting as staff." });
+      }
+      const existingCand = db.prepare('SELECT id FROM candidate_profiles WHERE id = ?').get(candidateId);
+      if (!existingCand) {
+        return res.status(404).json({ error: `Candidate '${candidateId}' does not exist.` });
+      }
     }
 
     if (!candidateId || !tradeId) {
@@ -373,8 +445,26 @@ router.post('/:id/signoff', authenticateToken, requireRole(['assessor', 'admin']
       return res.status(400).json({ error: "Assessment has already been signed off and released." });
     }
 
-    const decisionCode = finalDecision || 'certified_approved';
-    const remarks = assessorRemarks || "Assessment verified against National Occupational Standards and signed off.";
+    // Assessor must be explicitly assigned to this assessment (admins may override)
+    if (req.user.role === 'assessor' && assessment.assigned_assessor_id !== req.user.id) {
+      return res.status(403).json({ error: "Access forbidden: Assessor is not assigned to this candidate assessment case." });
+    }
+
+    // Explicit decision required (no silent default to certified_approved)
+    const validDecisions = ['certified_approved', 'conditional_bridge_training', 'requires_practical_demonstration', 'rejected'];
+    if (!finalDecision || !validDecisions.includes(finalDecision)) {
+      return res.status(400).json({ 
+        error: `A valid finalDecision is required. Permitted values: ${validDecisions.join(', ')}` 
+      });
+    }
+
+    // Explicit remarks required for human accountability
+    if (!assessorRemarks || assessorRemarks.trim().length < 5) {
+      return res.status(400).json({ error: "assessorRemarks are mandatory for assessor sign-off (min 5 characters)." });
+    }
+
+    const decisionCode = finalDecision;
+    const remarks = assessorRemarks.trim();
 
     // Generate cryptographic signature of assessor sign-off
     const signatureDigest = crypto.createHmac('sha256', process.env.JWT_SECRET || 'kaushal_key')

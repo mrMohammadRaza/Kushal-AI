@@ -1,14 +1,25 @@
 const jwt = require('jsonwebtoken');
 const { db, logAuditEvent } = require('../data/database');
 
+const isProduction = process.env.NODE_ENV === 'production';
 const JWT_SECRET = process.env.JWT_SECRET || 'kaushal_ai_sih_secret_key_2026';
 
+if (isProduction && (!process.env.JWT_SECRET || process.env.JWT_SECRET === 'kaushal_ai_sih_secret_key_2026' || process.env.JWT_SECRET.length < 32)) {
+  console.error('[FATAL CONFIGURATION ERROR]: JWT_SECRET must be configured with a high-entropy 32+ character key in production mode.');
+  process.exit(1);
+}
+
 /**
- * Middleware: Verify Bearer JWT Token
+ * Middleware: Verify Bearer JWT Token (via Authorization header or query parameter for media streaming)
  */
 function authenticateToken(req, res, next) {
   const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1];
+  let token = authHeader && authHeader.split(' ')[1];
+
+  // Allow secure token in query string specifically for authenticated media streaming
+  if (!token && req.query && req.query.token) {
+    token = req.query.token;
+  }
 
   if (!token) {
     return res.status(401).json({ error: "Access denied. Authentication token is missing." });

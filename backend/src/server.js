@@ -29,8 +29,48 @@ app.use(cors({
 app.use(express.json({ limit: '30mb' }));
 app.use(express.urlencoded({ extended: true, limit: '30mb' }));
 
-// Serve uploaded media evidence statically (Reports & Uploads)
-app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
+const { authenticateToken } = require('./middleware/auth');
+
+// Protected evidence access route (replaces unrestricted static exposure)
+app.get('/uploads/:filename', authenticateToken, (req, res) => {
+  try {
+    const filename = path.basename(req.params.filename); // Prevents directory traversal
+    const safePath = path.join(__dirname, '..', 'uploads', filename);
+
+    if (!fs.existsSync(safePath)) {
+      return res.status(404).json({ error: "Evidence file not found." });
+    }
+
+    // Verify ownership or staff authorization
+    const evidence = db.prepare(`
+      SELECT e.*, a.assigned_assessor_id, a.center_id
+      FROM evidence_records e
+      JOIN assessment_cases a ON e.assessment_id = a.id
+      WHERE e.file_path LIKE ?
+    `).get(`%${filename}%`);
+
+    if (evidence) {
+      if (req.user.role === 'candidate') {
+        const profile = db.prepare('SELECT id FROM candidate_profiles WHERE user_id = ?').get(req.user.id);
+        if (!profile || profile.id !== evidence.candidate_id) {
+          return res.status(403).json({ error: "Access forbidden: You cannot view evidence belonging to another candidate." });
+        }
+      } else if (req.user.role === 'assessor') {
+        if (evidence.assigned_assessor_id !== req.user.id) {
+          return res.status(403).json({ error: "Access forbidden: Assessor is not assigned to this candidate assessment." });
+        }
+      } else if (req.user.role === 'center_manager') {
+        if (evidence.center_id !== req.user.center_id) {
+          return res.status(403).json({ error: "Access forbidden: Evidence does not belong to your center." });
+        }
+      }
+    }
+
+    res.sendFile(safePath);
+  } catch (err) {
+    res.status(500).json({ error: "Evidence access error: " + err.message });
+  }
+});
 
 // Health check endpoints: Liveness and Readiness
 app.get(['/api/health', '/health'], (req, res) => {

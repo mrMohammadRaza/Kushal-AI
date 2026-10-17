@@ -239,10 +239,62 @@ function initSchema() {
 }
 
 /**
+ * Seeds official NSQF standards without populating demo users or credentials.
+ */
+function seedStandardsOnly() {
+  const occCount = db.prepare('SELECT COUNT(*) as count FROM occupations').get().count;
+  if (occCount > 0) return;
+
+  const pathsToTry = [
+    STANDARDS_PATH,
+    path.join(__dirname, '..', '..', 'data', 'nsqf_standards.json'),
+    path.join(__dirname, '..', '..', '..', 'data', 'nsqf_standards.json')
+  ];
+  let standardsData = null;
+  for (const p of pathsToTry) {
+    if (fs.existsSync(p)) {
+      standardsData = JSON.parse(fs.readFileSync(p, 'utf-8'));
+      break;
+    }
+  }
+
+  if (standardsData && standardsData.trades) {
+    const insertOcc = db.prepare(`
+      INSERT OR REPLACE INTO occupations (id, sector, trade, qp_code, nsqf_level, description, version)
+      VALUES (?, ?, ?, ?, ?, ?, '1.0')
+    `);
+    const insertComp = db.prepare(`
+      INSERT OR REPLACE INTO standards_competencies (id, trade_id, nos_code, title, weightage, performance_criteria_json, knowledge_criteria_json)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    for (const tr of standardsData.trades) {
+      insertOcc.run(tr.id, tr.sector, tr.trade, tr.qpCode, tr.nsqfLevel, tr.description || tr.trade);
+      if (tr.nosList) {
+        for (const nos of tr.nosList) {
+          const compId = `${tr.id}-${nos.nosCode}`;
+          insertComp.run(compId, tr.id, nos.nosCode, nos.title, nos.weightage || 25, JSON.stringify(nos.performanceCriteria || []), JSON.stringify(nos.knowledgeCriteria || []));
+        }
+      }
+    }
+    console.log('[Database] Official NSQF Standards seeded in production mode.');
+  }
+}
+
+/**
  * Seeds default standards, demo users, assessment centers, and candidates.
  */
 function seedInitialData() {
+  const isProduction = process.env.NODE_ENV === 'production';
   const userCount = db.prepare('SELECT COUNT(*) as count FROM users').get().count;
+
+  // In production, NEVER seed default demo accounts or passwords automatically
+  if (isProduction) {
+    console.log('[Database] Production mode active: skipping default demo credential seeding.');
+    seedStandardsOnly();
+    return;
+  }
+
   if (userCount > 0) return; // Already seeded
 
   console.log('[Database] Seeding initial users, standards, and demonstration records...');

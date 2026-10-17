@@ -80,17 +80,18 @@ class GeminiService:
     def analyze_practical_vision(
         self,
         image_source: Optional[str],
-        trade: Dict[str, Any]
+        trade: Dict[str, Any],
+        image_base64: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Multimodal Practical Vision Inspection:
-        Audits genuine image evidence if present. Returns honest missing-evidence report if absent.
+        Audits genuine image evidence if present (via path or base64). Returns honest missing-evidence report if absent.
         """
         trade_name = trade.get("trade", "Electrician")
         standard_tools = trade.get("standardTools", [])
         nos_list = trade.get("nosList", [])
 
-        image_part = self._prepare_image_part(image_source)
+        image_part = self._prepare_image_part(image_source, image_base64=image_base64)
         if not image_part:
             return {
                 "imageAudited": False,
@@ -349,9 +350,45 @@ Return JSON:
         )
         return res or "Consult the official Qualification Pack standards document for this trade."
 
-    def _prepare_image_part(self, image_source: Optional[str]) -> Optional[Dict[str, Any]]:
+    def _prepare_image_part(self, image_source: Optional[str], image_base64: Optional[str] = None) -> Optional[Dict[str, Any]]:
+        # 1. Prefer direct base64 payload if provided
+        if image_base64:
+            clean_b64 = image_base64.strip()
+            mime_type = "image/jpeg"
+            if clean_b64.startswith("data:"):
+                try:
+                    header, clean_b64 = clean_b64.split(",", 1)
+                    if "image/png" in header:
+                        mime_type = "image/png"
+                    elif "image/webp" in header:
+                        mime_type = "image/webp"
+                except Exception:
+                    pass
+            return {
+                "inlineData": {
+                    "mimeType": mime_type,
+                    "data": clean_b64
+                }
+            }
+
         if not image_source:
             return None
+
+        # 2. Check if image_source itself is a data URI
+        if image_source.startswith("data:image/"):
+            try:
+                header, clean_b64 = image_source.split(",", 1)
+                mime_type = "image/png" if "image/png" in header else "image/jpeg"
+                return {
+                    "inlineData": {
+                        "mimeType": mime_type,
+                        "data": clean_b64.strip()
+                    }
+                }
+            except Exception:
+                pass
+
+        # 3. Check if image_source is an accessible local file
         try:
             if os.path.exists(image_source):
                 ext = os.path.splitext(image_source)[1].lower()

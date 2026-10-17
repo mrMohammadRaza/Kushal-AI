@@ -3,8 +3,8 @@ const router = express.Router();
 const { db, logAuditEvent } = require('../data/database');
 const { optionalAuth, authenticateToken, requireRole } = require('../middleware/auth');
 
-// List candidates (Public / Demo or Authenticated)
-router.get('/', optionalAuth, (req, res) => {
+// List candidates (Authorized staff only)
+router.get('/', authenticateToken, requireRole(['assessor', 'center_manager', 'admin', 'auditor']), (req, res) => {
   try {
     const candidates = db.prepare(`
       SELECT c.*, o.trade as trade_title, o.nsqf_level
@@ -18,15 +18,25 @@ router.get('/', optionalAuth, (req, res) => {
   }
 });
 
-// Get candidate by ID
-router.get('/:id', optionalAuth, (req, res) => {
+// Get candidate by ID with object-level authorization
+router.get('/:id', authenticateToken, (req, res) => {
   try {
+    const { id } = req.params;
+
+    // Candidates can only view their own profile
+    if (req.user.role === 'candidate') {
+      const profile = db.prepare('SELECT id FROM candidate_profiles WHERE user_id = ?').get(req.user.id);
+      if (!profile || profile.id !== id) {
+        return res.status(403).json({ error: "Access forbidden: Candidates can only access their own profile." });
+      }
+    }
+
     const cand = db.prepare(`
       SELECT c.*, o.trade as trade_title, o.nsqf_level
       FROM candidate_profiles c
       LEFT JOIN occupations o ON c.trade_id = o.id
       WHERE c.id = ?
-    `).get(req.params.id);
+    `).get(id);
 
     if (!cand) {
       return res.status(404).json({ error: "Candidate not found." });

@@ -85,6 +85,35 @@ describe('Authentication & Server-Enforced RBAC', () => {
     expect(res.body.error).toContain("Access forbidden: Role 'candidate'");
   });
 
+  it('NEGATIVE TEST: should deny candidate role from viewing global candidates list', async () => {
+    const res = await request(app)
+      .get('/api/candidates')
+      .set('Authorization', `Bearer ${candidateToken}`);
+
+    expect(res.statusCode).toBe(403);
+    expect(res.body.error).toContain("Access forbidden: Role 'candidate'");
+  });
+
+  it('NEGATIVE TEST: Anti-IDOR candidate cannot submit assessment for another candidate', async () => {
+    const res = await request(app)
+      .post('/api/assessments/evaluate')
+      .set('Authorization', `Bearer ${candidateToken}`)
+      .field('candidateId', 'cand-different-profile-999')
+      .field('tradeId', 'electrician-l3')
+      .field('vivaAnswer', 'Checking security enforcement.');
+
+    expect(res.statusCode).toBe(403);
+    expect(res.body.error).toContain('Candidate cannot submit evidence on behalf of another candidate');
+  });
+
+  it('NEGATIVE TEST: Private evidence files cannot be accessed without authentication', async () => {
+    const res = await request(app)
+      .get('/uploads/test_circuit_diagram.png');
+
+    expect(res.statusCode).toBe(401);
+    expect(res.body.error).toContain('Authentication token is missing');
+  });
+
   it('NEGATIVE TEST: should reject unauthenticated requests to protected endpoints', async () => {
     const res = await request(app)
       .post('/api/assessments/asmt-fake-99/signoff')

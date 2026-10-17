@@ -30,6 +30,10 @@ class EvaluateRequest(BaseModel):
     viva_scenario_id: Optional[str] = ""
     image_path: Optional[str] = None
     audio_path: Optional[str] = None
+    image_base64: Optional[str] = None
+    audio_base64: Optional[str] = None
+    image_filename: Optional[str] = None
+    audio_filename: Optional[str] = None
     assessor_notes: Optional[str] = ""
     anti_fraud_audit: Optional[Dict[str, Any]] = None
 

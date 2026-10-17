@@ -34,6 +34,23 @@ async function evaluateAssessment({ tradeId, candidateId, vivaAnswer, vivaScenar
   const hasImage = Boolean(imagePath && fs.existsSync(imagePath));
   const hasViva = Boolean(vivaAnswer && vivaAnswer.trim().length > 0);
 
+  let imageBase64 = null;
+  let audioBase64 = null;
+  if (hasImage) {
+    try {
+      imageBase64 = fs.readFileSync(imagePath).toString('base64');
+    } catch (e) {
+      console.warn('[AI Orchestrator] Could not read image for base64 transfer:', e.message);
+    }
+  }
+  if (audioPath && fs.existsSync(audioPath)) {
+    try {
+      audioBase64 = fs.readFileSync(audioPath).toString('base64');
+    } catch (e) {
+      console.warn('[AI Orchestrator] Could not read audio for base64 transfer:', e.message);
+    }
+  }
+
   // 1. First Tier: Try FastAPI LangGraph AI Microservice
   try {
     const payload = {
@@ -43,6 +60,10 @@ async function evaluateAssessment({ tradeId, candidateId, vivaAnswer, vivaScenar
       viva_scenario_id: vivaScenarioId || "",
       image_path: hasImage ? imagePath : null,
       audio_path: audioPath || null,
+      image_base64: imageBase64,
+      audio_base64: audioBase64,
+      image_filename: imagePath ? path.basename(imagePath) : null,
+      audio_filename: audioPath ? path.basename(audioPath) : null,
       assessor_notes: assessorNotes || "",
       anti_fraud_audit: antiFraudAudit || null
     };

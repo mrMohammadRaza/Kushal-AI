@@ -34,6 +34,8 @@ class LangGraphAssessmentPipeline:
         viva_answer = request_data.get("viva_answer", "")
         image_path = request_data.get("image_path")
         audio_path = request_data.get("audio_path")
+        image_base64 = request_data.get("image_base64")
+        audio_base64 = request_data.get("audio_base64")
         anti_fraud_input = request_data.get("anti_fraud_audit")
 
         trade = self.rag.get_trade(trade_id)
@@ -41,14 +43,18 @@ class LangGraphAssessmentPipeline:
             first_key = list(self.rag.trades_by_id.keys())[0] if self.rag.trades_by_id else "electrician-l3"
             trade = self.rag.get_trade(first_key)
 
-        has_image = bool(image_path and os.path.exists(image_path))
+        has_image = bool((image_path and os.path.exists(image_path)) or image_base64)
         has_viva = bool(viva_answer and viva_answer.strip())
 
         # 1. Stage 1: Speech & Vernacular viva processing
         viva_transcript_data = self._process_viva(viva_answer, trade)
 
         # 2. Stage 2: Practical vision evidence inspection
-        vision_data = self._analyze_practical_vision(image_path if has_image else None, trade)
+        vision_data = self._analyze_practical_vision(
+            image_path if (image_path and os.path.exists(image_path)) else None, 
+            trade, 
+            image_base64=image_base64
+        )
 
         # 3. Stage 3: Competency synthesis & gap identification
         synthesis = self.gemini.synthesize_nsqf_evaluation(
@@ -133,8 +139,13 @@ class LangGraphAssessmentPipeline:
             timestampCitations=[]
         )
 
-    def _analyze_practical_vision(self, image_path: Optional[str], trade: Dict[str, Any]) -> VisionAnalysisResult:
-        gemini_result = self.gemini.analyze_practical_vision(image_path, trade)
+    def _analyze_practical_vision(
+        self, 
+        image_path: Optional[str], 
+        trade: Dict[str, Any],
+        image_base64: Optional[str] = None
+    ) -> VisionAnalysisResult:
+        gemini_result = self.gemini.analyze_practical_vision(image_path, trade, image_base64=image_base64)
 
         bounding_boxes: List[VisionBoundingBox] = []
         for box in gemini_result.get("boundingBoxes", []):

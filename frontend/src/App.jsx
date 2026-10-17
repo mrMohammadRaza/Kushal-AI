@@ -183,11 +183,11 @@ export default function App() {
       ...data,
       candidateProfile,
       antiFraudAudit: antiFraudAudit || {
-        livenessVerified: true,
-        confidence: 0.98,
-        gestureRecognized: "thumbs_up",
-        antiSpoofCheck: "Passed (Real Human Detected via Gemini Audit)",
-        geoLocation: { latitude: 25.3176, longitude: 82.9739, address: "Varanasi Skill Hub, UP" }
+        livenessVerified: false,
+        confidence: null,
+        gestureRecognized: null,
+        antiSpoofCheck: "Not Conducted",
+        geoLocation: null
       }
     };
 
@@ -259,16 +259,9 @@ export default function App() {
       // Ensure assessor authentication token exists
       let token = localStorage.getItem('kaushal_ai_auth_token');
       if (!token) {
-        const loginRes = await fetch('/api/auth/login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: 'assessor@kaushal.gov.in', password: 'Kaushal@2026' })
-        });
-        const loginData = await loginRes.json();
-        if (loginData.token) {
-          token = loginData.token;
-          localStorage.setItem('kaushal_ai_auth_token', token);
-        }
+        alert("Assessor authorization required. Please sign in with an authorized assessor account.");
+        setShowLoginModal(true);
+        return null;
       }
 
       const res = await fetch(`/api/assessments/${targetId}/signoff`, {

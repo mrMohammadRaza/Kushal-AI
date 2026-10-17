@@ -18,6 +18,7 @@ describe('Reports Generation & Public QR Code Verification', () => {
     // 2. Submit sample assessment for evaluation
     const evalRes = await request(app)
       .post('/api/assessments/evaluate')
+      .set('Authorization', `Bearer ${assessorToken}`)
       .field('candidateId', 'cand-101')
       .field('tradeId', 'electrician-l3')
       .field('vivaAnswer', 'Demonstrated circuit isolation, checked voltage with multimeter, connected earthing wire.');
@@ -48,10 +49,25 @@ describe('Reports Generation & Public QR Code Verification', () => {
     const res = await request(app)
       .post(`/api/assessments/${testAssessmentId}/signoff`)
       .set('Authorization', `Bearer ${assessorToken}`)
-      .send({ finalDecision: 'certified_approved' });
+      .send({ 
+        finalDecision: 'certified_approved',
+        assessorRemarks: 'Candidate re-evaluation attempt.'
+      });
 
     expect(res.statusCode).toBe(400);
     expect(res.body.error).toContain('already been signed off');
+  });
+
+  it('OBJECT-LEVEL AUTH: should require authorization to download PDF report', async () => {
+    const unauthRes = await request(app)
+      .get(`/api/reports/download/${testAssessmentId}`);
+    expect(unauthRes.statusCode).toBe(401);
+
+    const authRes = await request(app)
+      .get(`/api/reports/download/${testAssessmentId}`)
+      .set('Authorization', `Bearer ${assessorToken}`);
+    expect(authRes.statusCode).toBe(200);
+    expect(authRes.header['content-type']).toContain('application/pdf');
   });
 
   it('PUBLIC QR VERIFICATION: should return verified status and qualification metadata without private data', async () => {
