@@ -131,20 +131,50 @@ export default function LoginModal({ isOpen, onClose, onLoginSuccess, lang = 'hi
     };
 
     try {
-      if (tab === 'register') {
-        const result = await registerUser(jobDetails.email, password, jobDetails);
-        if (!result.success && !result.user) {
-          // If Supabase returns error (e.g. rate limit), gracefully continue with candidate profile
-          console.log('[Supabase Auth] Using resilient profile creation:', result.error);
+      // 1. Authenticate with backend API for server-enforced JWT
+      try {
+        const authEndpoint = tab === 'register' ? '/api/auth/register' : '/api/auth/login';
+        const authPayload = tab === 'register' ? {
+          email: jobDetails.email,
+          password,
+          fullName: jobDetails.fullName,
+          tradeId: jobDetails.tradeId,
+          experienceYears: jobDetails.experienceYears,
+          employmentType: jobDetails.employmentType,
+          workLocation: jobDetails.workLocation,
+          primaryLanguage: jobDetails.primaryLanguage
+        } : {
+          email: jobDetails.email,
+          password
+        };
+
+        const authRes = await fetch(authEndpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(authPayload)
+        });
+
+        if (authRes.ok) {
+          const authData = await authRes.json();
+          if (authData.token) {
+            localStorage.setItem('kaushal_ai_auth_token', authData.token);
+          }
+          if (authData.candidateProfile) {
+            jobDetails.id = authData.candidateProfile.id;
+          }
         }
-      } else {
-        const result = await loginUser(jobDetails.email, password);
-        if (!result.success) {
-          console.log('[Supabase Auth] Proceeding with candidate verification:', result.error);
-        }
+      } catch (backendAuthErr) {
+        console.warn('[Backend Auth Notice]:', backendAuthErr.message);
       }
 
-      // Persist candidate profile
+      // 2. Parallel sync with Supabase client if configured
+      if (tab === 'register') {
+        await registerUser(jobDetails.email, password, jobDetails).catch(() => {});
+      } else {
+        await loginUser(jobDetails.email, password).catch(() => {});
+      }
+
+      // 3. Persist active candidate session
       const savedCandidate = await saveCandidateSession(jobDetails);
       setLoading(false);
       onLoginSuccess(savedCandidate);

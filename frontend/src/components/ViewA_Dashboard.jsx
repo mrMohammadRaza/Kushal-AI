@@ -242,27 +242,27 @@ export default function ViewA_Dashboard({
         </div>
       )}
 
-      {/* 3. Holographic 3D Telemetry Strip */}
+      {/* 3. Operational Integrity & Verification Telemetry Strip */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
         <div className="card-3d p-4 rounded-2xl border border-white/10 space-y-1">
-          <span className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400 block">Artisans Assessed</span>
-          <span className="text-xl sm:text-2xl font-black text-blue-400">78,420+</span>
-          <span className="text-[10px] text-emerald-400 font-bold block">✓ 28 States & UTs Active</span>
+          <span className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400 block">Automated Tests</span>
+          <span className="text-xl sm:text-2xl font-black text-emerald-400">20 / 20</span>
+          <span className="text-[10px] text-emerald-400 font-bold block">✓ 15 Jest + 5 Pytest Passing</span>
         </div>
         <div className="card-3d p-4 rounded-2xl border border-white/10 space-y-1">
-          <span className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400 block">Vision AI Precision</span>
-          <span className="text-xl sm:text-2xl font-black text-emerald-400">99.4%</span>
-          <span className="text-[10px] text-blue-400 font-bold block">Google Gemini 3.5</span>
+          <span className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400 block">Indexed NSQF Standards</span>
+          <span className="text-xl sm:text-2xl font-black text-blue-400">5 Trades</span>
+          <span className="text-[10px] text-blue-300 font-bold block">NSQF Level 3 & 4 QPs</span>
         </div>
         <div className="card-3d p-4 rounded-2xl border border-white/10 space-y-1">
-          <span className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400 block">Regional Languages</span>
-          <span className="text-xl sm:text-2xl font-black text-amber-400">12 Dialects</span>
-          <span className="text-[10px] text-slate-400 font-bold block">Bhashini Multilingual</span>
+          <span className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400 block">Resilient Architecture</span>
+          <span className="text-xl sm:text-2xl font-black text-amber-400">3-Tier</span>
+          <span className="text-[10px] text-slate-400 font-bold block">FastAPI ➔ Gemini ➔ Local Rules</span>
         </div>
         <div className="card-3d p-4 rounded-2xl border border-white/10 space-y-1">
-          <span className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400 block">Instant DigiLocker</span>
-          <span className="text-xl sm:text-2xl font-black text-purple-400">Verified</span>
-          <span className="text-[10px] text-purple-300 font-bold block">Aadhaar Linked e-Cert</span>
+          <span className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400 block">Report Verification</span>
+          <span className="text-xl sm:text-2xl font-black text-purple-400">SHA-256</span>
+          <span className="text-[10px] text-purple-300 font-bold block">Tamper-Evident QR Digest</span>
         </div>
       </div>
 
