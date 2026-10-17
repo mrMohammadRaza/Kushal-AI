@@ -3,23 +3,23 @@ from typing import List, Optional, Dict, Any
 
 class AntiFraudAudit(BaseModel):
     geoTag: Optional[Dict[str, Any]] = None
-    livenessVerified: bool = True
-    confidence: float = 0.97
-    gestureRecognized: Optional[str] = "thumbs_up"
-    antiSpoofCheck: str = "Passed (Real Human Detected)"
+    livenessVerified: bool = False
+    confidence: Optional[float] = None
+    gestureRecognized: Optional[str] = None
+    antiSpoofCheck: str = "Pending Assessor Verification"
     capturedAt: Optional[str] = None
 
 class VisionBoundingBox(BaseModel):
     label: str
-    box_2d: List[float] # [ymin, xmin, ymax, xmax] normalized
+    box_2d: List[float] # [ymin, xmin, ymax, xmax] normalized 0.0 - 1.0
     confidence: float
     pcCode: Optional[str] = None
 
 class AudioTimestampCitation(BaseModel):
     start_sec: float
     end_sec: float
-    text_hi: str
-    text_en: str
+    text_hi: Optional[str] = None
+    text_en: Optional[str] = None
     matchedKeyword: str
     pcCode: Optional[str] = None
 
@@ -50,18 +50,19 @@ class NOSResult(BaseModel):
     feedback: str
 
 class VisionAnalysisResult(BaseModel):
+    imageAudited: bool = False
     ppeCompliance: Dict[str, Any]
     workmanshipQuality: Dict[str, Any]
-    toolsIdentified: List[str]
+    toolsIdentified: List[str] = []
     boundingBoxes: Optional[List[VisionBoundingBox]] = []
 
 class VivaTranscriptResult(BaseModel):
-    transcript: str
-    transcriptEnglish: Optional[str] = ""
-    languageDetected: str
-    technicalKeywordsFound: List[str]
-    conceptClarityRating: str
-    bhashiniTranslationUsed: Optional[bool] = True
+    transcript: Optional[str] = None
+    transcriptEnglish: Optional[str] = None
+    languageDetected: str = "none"
+    technicalKeywordsFound: List[str] = []
+    conceptClarityRating: str = "Not Assessed"
+    bhashiniTranslationUsed: Optional[bool] = False
     timestampCitations: Optional[List[AudioTimestampCitation]] = []
 
 class AssessmentResponse(BaseModel):
@@ -70,15 +71,16 @@ class AssessmentResponse(BaseModel):
     qpCode: str
     nsqfLevel: int
     candidateId: str
-    overallScore: int
-    status: str
+    overallScore: Optional[int] = None
+    status: str = Field(..., description="assessor_review_required, insufficient_evidence, requires_practical_test, evidence_missing")
     recommendation: str
     confidenceScore: float
+    evidencePresent: Optional[Dict[str, bool]] = None
     visionAnalysis: VisionAnalysisResult
     vivaTranscript: VivaTranscriptResult
     nosResults: List[NOSResult]
-    strengths: List[str]
-    gapAreas: List[str]
-    bridgeTrainingModules: List[str]
-    assessorSignOffRequired: bool
+    strengths: List[str] = []
+    gapAreas: List[str] = []
+    bridgeTrainingModules: List[str] = []
+    assessorSignOffRequired: bool = True
     antiFraudAudit: Optional[AntiFraudAudit] = None

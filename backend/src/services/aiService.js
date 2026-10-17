@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 const { evaluateWithGemini } = require('./geminiService');
 
 function getStandardsPath() {
@@ -9,7 +10,7 @@ function getStandardsPath() {
 }
 
 /**
- * Resolves the internal AI service URL from Vercel service binding or local environment.
+ * Resolves the internal AI service URL from environment.
  */
 function getAiServiceUrl(endpoint = '') {
   const base = process.env.AI_SERVICE_URL || 'http://127.0.0.1:8000';
@@ -19,15 +20,19 @@ function getAiServiceUrl(endpoint = '') {
 }
 
 /**
- * Calls FastAPI LangGraph assessment microservice.
- * Falls back to direct Google Gemini 3.5 synthesis if AI microservice is offline.
+ * Orchestrates Candidate Assessment Evaluation:
+ * Tier 1: FastAPI LangGraph AI Microservice (if online)
+ * Tier 2: Direct Google Gemini Multimodal Engine (if API key present)
+ * Tier 3: Deterministic Rule-Based Evidence Engine (zero fabrication, honest gap detection)
  */
-async function evaluateAssessment({ tradeId, candidateId, vivaAnswer, vivaScenarioId, imagePath, audioPath, assessorNotes, antiFraudAudit }) {
-  const evaluateEndpoint = getAiServiceUrl('/api/evaluate');
-
+async function evaluateAssessment({ tradeId, candidateId, vivaAnswer, vivaScenarioId, imagePath, audioPath, assessorNotes, antiFraudAudit, correlationId }) {
+  const reqCorrelationId = correlationId || `corr-${Date.now()}-${crypto.randomBytes(3).toString('hex')}`;
   const standardsPath = getStandardsPath();
   const standardsData = JSON.parse(fs.readFileSync(standardsPath, 'utf-8'));
   const trade = standardsData.trades.find(t => t.id === tradeId) || standardsData.trades[0];
+
+  const hasImage = Boolean(imagePath && fs.existsSync(imagePath));
+  const hasViva = Boolean(vivaAnswer && vivaAnswer.trim().length > 0);
 
   // 1. First Tier: Try FastAPI LangGraph AI Microservice
   try {
@@ -36,18 +41,21 @@ async function evaluateAssessment({ tradeId, candidateId, vivaAnswer, vivaScenar
       candidate_id: candidateId,
       viva_answer: vivaAnswer || "",
       viva_scenario_id: vivaScenarioId || "",
-      image_path: imagePath || null,
+      image_path: hasImage ? imagePath : null,
       audio_path: audioPath || null,
       assessor_notes: assessorNotes || "",
       anti_fraud_audit: antiFraudAudit || null
     };
 
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 6000);
+    const timeout = setTimeout(() => controller.abort(), 1200);
 
-    const response = await fetch(evaluateEndpoint, {
+    const response = await fetch(getAiServiceUrl('/api/evaluate'), {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Correlation-ID': reqCorrelationId
+      },
       body: JSON.stringify(payload),
       signal: controller.signal
     });
@@ -57,197 +65,229 @@ async function evaluateAssessment({ tradeId, candidateId, vivaAnswer, vivaScenar
     if (response.ok) {
       const data = await response.json();
       return {
-        source: 'fastapi-langgraph-gemini',
+        source: 'fastapi-langgraph',
+        correlationId: reqCorrelationId,
         ...data
       };
     }
   } catch (err) {
-    console.log(`[AI Service] FastAPI microservice unavailable (${err.message}). Engaging direct Google Gemini engine.`);
+    // Log traceably without halting
+    console.log(`[AI Orchestrator] FastAPI microservice unavailable (${err.message}). Falling back to Tier 2.`);
   }
 
-  // 2. Second Tier: Direct Google Gemini 3.5 Multimodal Analysis
+  // 2. Second Tier: Direct Google Gemini Multimodal Analysis
   try {
     const geminiResult = await evaluateWithGemini({
       trade,
       candidateId,
       vivaAnswer,
-      imagePath,
+      imagePath: hasImage ? imagePath : null,
       audioPath,
       assessorNotes,
       antiFraudAudit
     });
 
     if (geminiResult) {
-      return geminiResult;
+      return {
+        correlationId: reqCorrelationId,
+        ...geminiResult
+      };
     }
   } catch (geminiErr) {
-    console.warn(`[AI Service] Direct Gemini call error (${geminiErr.message}). Engaging resilient local fallback engine.`);
+    console.warn(`[AI Orchestrator] Direct Gemini call error (${geminiErr.message}). Engaging Tier 3 deterministic engine.`);
   }
 
-  // 3. Third Tier: Resilient Local Rule Engine Fallback
-  return evaluateLocally({ tradeId, candidateId, vivaAnswer, vivaScenarioId, imagePath, audioPath, assessorNotes });
+  // 3. Third Tier: Deterministic Standards Rule Engine (Honest, Evidence-Linked, Non-Fabricating)
+  return evaluateLocallyDeterministic({
+    trade,
+    candidateId,
+    vivaAnswer,
+    hasImage,
+    imagePath,
+    correlationId: reqCorrelationId,
+    antiFraudAudit
+  });
 }
 
-function evaluateLocally({ tradeId, candidateId, vivaAnswer, vivaScenarioId, imagePath, audioPath, assessorNotes }) {
-  const standardsPath = getStandardsPath();
-  const standardsData = JSON.parse(fs.readFileSync(standardsPath, 'utf-8'));
-  const trade = standardsData.trades.find(t => t.id === tradeId) || standardsData.trades[0];
+/**
+ * Deterministic evidence evaluator.
+ * Evaluates submitted text against trade performance criteria.
+ * Explicitly flags missing evidence without generating fake passing scores.
+ */
+function evaluateLocallyDeterministic({ trade, candidateId, vivaAnswer, hasImage, imagePath, correlationId, antiFraudAudit }) {
+  const normalizedAnswer = (vivaAnswer || '').toLowerCase().trim();
+  const hasViva = normalizedAnswer.length > 0;
 
   const nosResults = [];
   let totalWeightedScore = 0;
   let totalWeight = 0;
+  let criteriaAssessed = 0;
+  let criteriaSupported = 0;
 
-  const normalizedAnswer = (vivaAnswer || '').toLowerCase();
+  const gapAreas = [];
+  const strengths = [];
 
   trade.nosList.forEach((nos) => {
     const weight = nos.weightage || 25;
     totalWeight += weight;
 
-    const pcAssessments = (nos.performanceCriteria || []).map((pc, pIdx) => {
-      const pcKeywords = pc.toLowerCase().split(' ').filter(w => w.length > 4);
-      const matches = pcKeywords.filter(kw => normalizedAnswer.includes(kw)).length;
-      
-      let status = "Competent";
-      let score = 88;
-      
-      if (normalizedAnswer.length < 20 && pIdx > 1) {
-        status = "Partially Competent";
-        score = 70;
-      } else if (matches > 0 || normalizedAnswer.length > 50) {
-        status = "Competent";
-        score = Math.min(95, 78 + (matches * 6));
-      } else {
-        score = 85;
+    const pcAssessments = (nos.performanceCriteria || []).map((pc) => {
+      criteriaAssessed++;
+      const code = pc.split(':')[0].trim();
+      const desc = pc.split(':').slice(1).join(':').trim() || pc;
+
+      // Extract meaningful domain keywords (length > 4)
+      const keywords = desc.toLowerCase()
+        .replace(/[^a-z0-9 ]/g, ' ')
+        .split(/\s+/)
+        .filter(w => w.length > 3 && !['perform', 'carry', 'ensure', 'verify', 'using', 'proper'].includes(w));
+
+      const matches = keywords.filter(kw => normalizedAnswer.includes(kw));
+
+      let status = "evidence_missing";
+      let score = 0;
+      let evidenceNote = "No specific demonstration or oral explanation identified for this criterion.";
+
+      if (hasViva && matches.length > 0) {
+        criteriaSupported++;
+        status = matches.length >= 2 ? "partially_supported" : "partially_supported";
+        score = Math.min(85, 55 + (matches.length * 15));
+        evidenceNote = `Candidate verbal evidence referenced related keywords: [${matches.join(', ')}].`;
+      } else if (!hasViva && !hasImage) {
+        status = "evidence_missing";
+        score = 0;
+        evidenceNote = "Missing evidence: Neither photo evidence nor viva audio was provided.";
+      } else if (hasImage && !hasViva) {
+        status = "requires_practical_test";
+        score = 40;
+        evidenceNote = "Photo evidence submitted; requires assessor direct viva confirmation.";
       }
 
       return {
-        code: pc.split(':')[0],
-        description: pc,
+        code,
+        description: desc,
         status,
         score,
-        evidence: `Verified through practical demonstration and verbal explanation.`
+        evidence: evidenceNote
       };
     });
 
-    const nosAvgScore = Math.round(pcAssessments.reduce((acc, curr) => acc + curr.score, 0) / (pcAssessments.length || 1));
+    const evaluatedPcs = pcAssessments.filter(p => p.status !== 'evidence_missing');
+    const nosAvgScore = evaluatedPcs.length > 0
+      ? Math.round(evaluatedPcs.reduce((acc, curr) => acc + curr.score, 0) / pcAssessments.length)
+      : 0;
+
     totalWeightedScore += (nosAvgScore * (weight / 100));
+
+    let nosStatus = "insufficient_evidence";
+    if (nosAvgScore >= 70) nosStatus = "partially_supported";
+    else if (nosAvgScore > 0) nosStatus = "requires_practical_test";
+    else nosStatus = "evidence_missing";
 
     nosResults.push({
       nosCode: nos.nosCode,
       title: nos.title,
       weightage: weight,
       score: nosAvgScore,
-      status: nosAvgScore >= 75 ? "Competent" : "Partially Competent",
+      status: nosStatus,
       performanceCriteria: pcAssessments,
-      feedback: `Demonstrates sound practical familiarity with ${nos.title}. Standard safety precautions followed.`
+      feedback: nosAvgScore >= 70 
+        ? `Demonstrates relevant background concepts for ${nos.title}. Requires assessor verification.`
+        : `Evidence insufficient to establish competency for ${nos.title}. Practical assessment recommended.`
     });
   });
 
-  const finalScore = Math.min(100, Math.round(totalWeightedScore)) || 90;
-  const isRecommended = finalScore >= 70;
+  const finalScore = (!hasImage && !hasViva) ? null : Math.round(totalWeightedScore);
+
+  // Determine honest operational status
+  let overallStatus = "insufficient_evidence";
+  let recommendation = "";
+
+  if (!hasImage && !hasViva) {
+    overallStatus = "evidence_missing";
+    recommendation = "Candidate has not submitted practical work photo or verbal viva evidence. Assessment cannot proceed.";
+    gapAreas.push("Mandatory practical demonstration photo not provided.");
+    gapAreas.push("Candidate oral viva voce explanation not recorded.");
+  } else if (!hasImage && hasViva) {
+    overallStatus = "requires_practical_test";
+    recommendation = "Verbal concepts explained, but practical visual proof is missing. Assessor must conduct an on-site practical test.";
+    gapAreas.push("Physical workmanship and tool handling evidence absent.");
+    strengths.push("Candidate can articulate basic trade procedures orally.");
+  } else if (hasImage && !hasViva) {
+    overallStatus = "requires_practical_test";
+    recommendation = "Work photo provided, but viva explanation missing. Oral interview required to verify candidate authorship and safety knowledge.";
+    gapAreas.push("Oral viva voce explanation not submitted.");
+    strengths.push("Visual demonstration photo provided for assessor inspection.");
+  } else {
+    overallStatus = "assessor_review_required";
+    recommendation = "Multimodal evidence received. AI recommendation prepared for qualified human assessor review and rubric scoring.";
+    strengths.push("Candidate submitted both practical work photo and oral description.");
+    strengths.push("Procedural terminology aligned with National Occupational Standards.");
+  }
+
+  // Mandatory Bridge Training based on identified gaps
+  const bridgeModules = [];
+  if (!hasImage || finalScore < 70) {
+    bridgeModules.push(`Module 1: Practical Demonstration & Tool Posture Workshop (${trade.trade})`);
+  }
+  bridgeModules.push("Module 2: Indian Standards (IS/BIS) Occupational Safety & PPE Protocol");
+  bridgeModules.push("Module 3: Formal Technical Documentation, Schematics & Quality Audit");
 
   return {
-    source: 'local-copilot-engine',
+    source: 'deterministic-standards-engine',
+    correlationId,
     tradeId: trade.id,
     tradeTitle: trade.trade,
     qpCode: trade.qpCode,
     nsqfLevel: trade.nsqfLevel,
     candidateId,
     overallScore: finalScore,
-    status: isRecommended ? "Certified" : "Conditional RPL",
-    recommendation: isRecommended
-      ? `Recommended for NSQF Level ${trade.nsqfLevel} Certification under RPL Category A.`
-      : `Recommended for 12-hour Bridge Training before final NSQF assessment re-evaluation.`,
-    confidenceScore: 0.95,
+    status: overallStatus,
+    recommendation,
+    confidenceScore: (!hasImage || !hasViva) ? 0.35 : 0.82,
+    evidencePresent: {
+      hasPracticalPhoto: hasImage,
+      hasVivaExplanation: hasViva
+    },
     visionAnalysis: {
+      imageAudited: hasImage,
       ppeCompliance: {
-        helmetDetected: true,
-        glovesDetected: true,
-        safetyShoesVerified: true,
-        ppeScore: 94,
-        remarks: "Candidate wearing required dielectric gloves and protective gear during work demonstration."
+        helmetDetected: null,
+        glovesDetected: null,
+        safetyShoesVerified: null,
+        ppeScore: hasImage ? 50 : 0,
+        remarks: hasImage 
+          ? "Photo evidence logged and preserved for manual assessor visual inspection."
+          : "No practical photo uploaded. PPE compliance unverified."
       },
       workmanshipQuality: {
-        toolHandling: "Competent grip on calibrated torque instruments",
-        finishing: "Mechanically secure lug termination",
-        neatnessScore: 90
+        toolHandling: hasImage ? "Requires human assessor inspection from uploaded image" : "Unassessed (No image)",
+        finishing: hasImage ? "Requires human assessor inspection from uploaded image" : "Unassessed (No image)",
+        neatnessScore: hasImage ? 60 : 0
       },
-      toolsIdentified: trade.standardTools ? trade.standardTools.slice(0, 4) : ["Digital Multimeter", "Insulated Screwdrivers", "Crimping Pliers"],
-      boundingBoxes: [
-        {
-          label: "Dielectric Safety Gloves (Class 1)",
-          box_2d: [0.18, 0.22, 0.44, 0.48],
-          confidence: 0.96,
-          pcCode: "PC1.1"
-        },
-        {
-          label: "3-Phase Industrial Busbar & Lug Termination",
-          box_2d: [0.42, 0.45, 0.88, 0.85],
-          confidence: 0.94,
-          pcCode: "PC1.2"
-        },
-        {
-          label: "Calibrated 1000V Megger Insulation Tester",
-          box_2d: [0.55, 0.12, 0.85, 0.38],
-          confidence: 0.92,
-          pcCode: "PC2.1"
-        }
-      ]
+      toolsIdentified: [],
+      boundingBoxes: []
     },
     vivaTranscript: {
-      transcript: vivaAnswer || "Candidate explained circuit isolation, multimeter continuity check, and phase sequence verification.",
-      transcriptEnglish: "Candidate explained circuit isolation, multimeter continuity check, and phase sequence verification.",
-      languageDetected: "en-IN / hi-IN",
-      technicalKeywordsFound: [
-        "MCB", "continuity test", "copper conductor", "earthing", "isolation"
-      ],
-      conceptClarityRating: "High",
-      bhashiniTranslationUsed: true,
-      timestampCitations: [
-        {
-          start_sec: 0.5,
-          end_sec: 2.8,
-          text_hi: "पहले 3-फेज मेन आइसोलेटर काटा और लॉक आउट लगाया",
-          text_en: "First isolated the 3-phase supply and applied lock out",
-          matchedKeyword: "Isolation & Lockout",
-          pcCode: "PC1.1"
-        },
-        {
-          start_sec: 2.9,
-          end_sec: 5.2,
-          text_hi: "रोटेशन मीटर से R-Y-B चेक किया और बसबार बोल्ट टॉर्क किए",
-          text_en: "Verified phase sequence R-Y-B and torqued busbar bolts",
-          matchedKeyword: "Phase Sequence & Torque",
-          pcCode: "PC1.2"
-        },
-        {
-          start_sec: 5.3,
-          end_sec: 8.4,
-          text_hi: "1000V मेगर से मोटर वाइंडिंग का इंसुलेशन 50 मेगा-ओम मिला",
-          text_en: "Insulation resistance with 1000V Megger measured 50 Megohms",
-          matchedKeyword: "1000V Megger Insulation Test",
-          pcCode: "PC2.1"
-        }
-      ]
+      transcript: hasViva ? vivaAnswer : null,
+      transcriptEnglish: hasViva ? vivaAnswer : null,
+      languageDetected: hasViva ? "hi-IN / en-IN" : "none",
+      technicalKeywordsFound: hasViva 
+        ? trade.nosList.flatMap(n => (n.performanceCriteria || []).flatMap(pc => pc.toLowerCase().split(/\s+/)).filter(w => w.length > 5 && normalizedAnswer.includes(w))).slice(0, 8)
+        : [],
+      conceptClarityRating: hasViva ? (normalizedAnswer.length > 50 ? "Moderate" : "Basic") : "Not Assessed",
+      timestampCitations: []
     },
     nosResults,
-    strengths: [
-      "Extensive hands-on tool handling and muscle memory acquired through informal experience.",
-      "Good awareness of basic workplace safety and electrical isolation procedures.",
-      "Clear articulation of troubleshooting steps under domestic fault conditions."
-    ],
-    gapAreas: [
-      "Formal documentation and wiring schematic reading according to Indian Standards (IS 3043).",
-      "Exact mathematical calculations for cable derating factors under high ambient temperatures."
-    ],
-    bridgeTrainingModules: [
-      "Module 3: Bureau of Indian Standards (BIS) Earthing & Protective Device Specifications",
-      "Module 5: Digital recordkeeping and formal job card maintenance"
-    ],
-    assessorSignOffRequired: true
+    strengths: strengths.length > 0 ? strengths : ["Candidate registered under Recognition of Prior Learning pathway."],
+    gapAreas: gapAreas.length > 0 ? gapAreas : ["Formal certification requires human assessor sign-off."],
+    bridgeTrainingModules: bridgeModules,
+    assessorSignOffRequired: true,
+    antiFraudAudit: antiFraudAudit || null
   };
 }
 
 module.exports = {
-  evaluateAssessment
+  evaluateAssessment,
+  getStandardsPath
 };

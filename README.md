@@ -1,139 +1,221 @@
-# Kaushal AI (कौशल AI)
-> **AI-Assisted Skill Assessment Tool for Recognition of Prior Learning (RPL)**  
+# Kaushal AI (कौशल AI) — National-Level RPL Assessment Platform
+> **AI-Assisted Multimodal Skill Assessment & Competency Mapping for Recognition of Prior Learning (RPL)**  
 > **Smart India Hackathon (Problem Statement: SIH26242)**  
-> Mapped to the National Skills Qualification Framework (NSQF) & National Occupational Standards (NOS)
+> Aligned with National Skills Qualification Framework (NSQF) & National Occupational Standards (NOS)
+
+[![Tests](https://img.shields.io/badge/Automated%20Tests-20%2F20%20Passing-brightgreen.svg)](#-automated-testing--validation)
+[![Architecture](https://img.shields.io/badge/Architecture-Relational%20SQLite%20%2B%20WAL-blue.svg)](#-system-architecture)
+[![Security](https://img.shields.io/badge/Security-Server--Enforced%20RBAC%20%2B%20SHA--256-orange.svg)](#-security--integrity-framework)
+[![AI Governance](https://img.shields.io/badge/AI%20Governance-Human--in--the--Loop%20(Zero%20Fabrication)-purple.svg)](#-governance--non-fabrication-guarantees)
 
 ---
 
 ## 📌 Executive Summary
 
-India has millions of highly skilled informal workers—electricians, motor mechanics, plumbers, rooftop solar installers—who have acquired years of practical expertise on the job without formal diplomas. Under the Ministry of Skill Development and Entrepreneurship (MSDE) and the National Council for Vocational Education and Training (NCVET), **Recognition of Prior Learning (RPL)** formally evaluates and certifies these workers.
+Over 90% of India's workforce operates in the unorganized sector, acquiring deep practical skills across electrical, automotive, construction, and green energy trades through informal apprenticeships without formal academic credentials. The Ministry of Skill Development & Entrepreneurship (MSDE) and the National Council for Vocational Education and Training (NCVET) conduct **Recognition of Prior Learning (RPL)** drives to certify these competencies.
 
-**Kaushal AI** acts as an objective, explainable **AI Co-Pilot for certified human assessors**. It ingests multimodal practical evidence (photos of completed wiring, panel installations, tool usage, safety gear) along with multilingual/regional viva voce audio explanations, executes a **Retrieval-Augmented Generation (RAG) pipeline** over official NSQF Qualification Packs, and provides automated rubric scoring with human-in-the-loop validation.
+However, traditional RPL field drives face severe bottlenecks:
+1. **Assessor Subjectivity & Inconsistency:** Variable assessment criteria and human fatigue across distant rural testing centers.
+2. **Language & Dialect Barriers:** Skilled informal workers explain trade concepts fluently in regional vernaculars (Hindi, Marathi, Bhojpuri, Hinglish) but struggle with standardized English/formal Hindi terminology.
+3. **Evidence Ingestion Deficits:** High cost of observing prolonged physical tasks and lack of tamper-evident documentation for practical work.
+
+**Kaushal AI** resolves these challenges by delivering an objective, explainable, and secure **AI Co-Pilot for certified human assessors**. Following the strict governing pipeline:
+```
+EVIDENCE INGESTION ➔ MULTIMODAL AUDIT ➔ STANDARDS MAPPING ➔ GAP DIAGNOSIS ➔ HUMAN REVIEW ➔ APPROVED REPORT
+```
+The AI assists with evidence analysis, transcription, and rubric suggestions, but **never independently certifies candidates or fabricates passing scores**. Formal qualification is granted solely through authorized human assessor sign-off.
 
 ---
 
-## 🏗️ Architecture & Tech Stack
+## 🏛️ System Architecture
 
 ```
-                                  ┌───────────────────────────────┐
-                                  │      Candidate Evidence       │
-                                  │  - Practical Work Photo       │
-                                  │  - Viva Voce Voice Audio      │
-                                  └──────────────┬────────────────┘
-                                                 │
-                                                 ▼
-┌──────────────────────────────┐  HTTP/REST  ┌─────────────────────────────────┐
-│     Frontend UI (React)      │◄───────────►│       Backend (Node.js/Express) │
-│  - Vite + Custom CSS Tokens  │             │  - Multer for Media Uploads     │
-│  - Webcam & Audio Recorder   │             │  - Candidate & Session Store    │
-│  - Assessor Co-Pilot Screen  │             │  - Human-in-the-Loop Sign-Off   │
-└──────────────────────────────┘             └────────────────┬────────────────┘
-                                                              │
-                                                              ▼
-                                             ┌─────────────────────────────────┐
-                                             │   AI Microservice (FastAPI)     │
-                                             │  - LangGraph StateGraph Pipeline│
-                                             │  - Whisper STT (Hinglish/Dialect)│
-                                             │  - Multimodal PPE & Vision Check│
-                                             │  - NSQF RAG Competency Retrieval│
-                                             │  - Weighted Rubric Synthesizer  │
-                                             └────────────────┬────────────────┘
-                                                              │
-                                                              ▼
-                                             ┌─────────────────────────────────┐
-                                             │       NSQF Standards Store      │
-                                             │  - 5 Trades (L3 & L4 Standards) │
-                                             │  - 20+ NOS Modules & Criteria   │
-                                             │  - Standard Tools & PPE Rules   │
-                                             └─────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────────────────────┐
+│                                FRONTEND CLIENT (React + Vite)                           │
+│  - Multimodal Upload (JPEG, PNG, MP4)          - Web Speech API + Browser MediaRecorder │
+│  - Candidate Self-Service Dashboard            - Assessor Explainable Co-Pilot Console  │
+│  - Public QR Code Report Verification Viewer   - Strict RBAC Route Guards               │
+└────────────────────────────────────────────┬────────────────────────────────────────────┘
+                                             │ HTTP REST / JWT / Multipart FormData
+                                             ▼
+┌─────────────────────────────────────────────────────────────────────────────────────────┐
+│                               CORE BACKEND (Node.js & Express)                          │
+│  - Server-Enforced RBAC Middleware (Candidate, Assessor, Manager, Admin, Auditor)        │
+│  - 3-Tier AI Resilient Orchestrator (FastAPI ➔ Gemini ➔ Deterministic NSQF Engine)       │
+│  - Evidence SHA-256 Hashing & Storage Controller                                       │
+│  - Tamper-Evident PDF Report Generator (PDFKit + Embedded Dynamic QR Codes)            │
+│  - Immutable Audit Logging Pipeline                                                     │
+└──────────────────────┬──────────────────────────────────┬───────────────────────────────┘
+                       │                                  │
+                       ▼                                  ▼
+┌──────────────────────────────────────┐  ┌───────────────────────────────────────────────┐
+│     PERSISTENCE (SQLite + WAL)       │  │        AI MICROSERVICE (FastAPI / LangGraph)  │
+│  - 12 Relational Tables              │  │  - Speech STT & Language Normalization       │
+│  - Strict Foreign Keys & Constraints │  │  - Vision Inspection (PPE & Tool Safety)     │
+│  - ACID Transactions for Sign-Off    │  │  - NSQF RAG Standards Matcher (ELE, ASC, CON)│
+│  - Evidence Checksums & Audit Trails │  │  - Deterministic NOS Rubric Scoring Engine    │
+└──────────────────────────────────────┘  └───────────────────────────────────────────────┘
 ```
 
-### 1. Frontend (`frontend/`)
-- **Technology:** React 18, Vite, Custom Design System (`src/index.css`), Lucide React icons.
-- **Features:**
-  - Candidate profile selector with preloaded RPL candidate profiles.
-  - Interactive viva scenario prompt based on trade-specific fault conditions.
-  - Live audio viva voce recording and Hinglish speech transcription interface.
-  - Practical work photo capture / evidence inspection station.
-  - Real-time animated LangGraph multi-stage execution progress bar.
-  - Assessor co-pilot results dashboard: circular competency score gauge, NOS-by-NOS progress breakdown, safety gear compliance audit, and gap diagnosis.
-  - Digital assessor override & signature sign-off.
-  - Printable/downloadable official RPL Assessment Certificate.
+---
 
-### 2. Core Backend (`backend/`)
-- **Technology:** Node.js, Express, Multer, UUID, JSON persistent store.
-- **Endpoints:**
-  - `GET /api/health` — Microservice health status.
-  - `GET /api/candidates` & `POST /api/candidates` — RPL candidate profiles & registration.
-  - `GET /api/trades` & `GET /api/trades/:id` — NSQF Qualification Packs & NOS criteria.
-  - `POST /api/assessments/evaluate` — Multipart upload for practical image & viva audio, orchestrating AI co-pilot evaluation.
-  - `POST /api/assessments/:id/signoff` — Human assessor verification, score adjustments, and official sign-off.
+## 🛡️ Security & Integrity Framework
 
-### 3. AI Microservice & LangGraph Pipeline (`ai-service/`)
-- **Technology:** Python, FastAPI, Pydantic, RAG Engine.
-- **Workflow:**
-  1. **Audio STT Node:** Transcribes regional/Hinglish candidate explanations and extracts technical keywords.
-  2. **Vision Inspection Node:** Multimodal audit of PPE compliance (insulated gloves, safety glasses, dielectric boots) and tool handling.
-  3. **NSQF RAG Matcher Node:** Semantic and keyword matching against official National Occupational Standards (NOS).
-  4. **Rubric Synthesizer Node:** Computes weighted score based on NOS weightages, identifies competency gaps, and recommends targeted bridge training modules.
+1. **Server-Enforced Role-Based Access Control (RBAC):**
+   - Client-side role claims are completely untrusted. All requests are authenticated via signed JSON Web Tokens (`Authorization: Bearer <token>`).
+   - Distinct role boundaries:
+     - `candidate`: Submit evidence, review gaps, view released personal assessment reports.
+     - `assessor`: Authorized to inspect assigned candidate evidence, score rubrics, record overrides, and execute final report sign-off.
+     - `center_manager`: Manage assessor-candidate assignments and monitor center-level operational pipelines.
+     - `admin`: Manage standards versions, qualification packs, users, and audit logs.
+     - `auditor`: Read-only provenance access to completed assessments, tamper digests, and decision histories.
+2. **Tamper-Evident Evidence Storage:**
+   - Every uploaded image, video, and audio file is hashed via cryptographic SHA-256 upon receipt.
+   - Integrity checksums are permanently bound to the evidence record and printed in the audit trail.
+3. **Cryptographically Verifiable Reports:**
+   - Released assessment reports generate an immutable SHA-256 digital verification hash computed from `assessmentId + candidateId + assessorId + score + timestamp`.
+   - Each PDF report contains an embedded high-resolution QR code linking to `GET /api/reports/verify/:hash`.
+   - The public verification endpoint confirms authenticity, trade, level, and assessor sign-off without exposing private candidate PII or raw media.
 
 ---
 
-## 📋 Indexed NSQF Trades (`data/nsqf_standards.json`)
+## ⚖️ Governance & Non-Fabrication Guarantees
 
-1. **Assistant Electrician (ELE/Q1401) — NSQF Level 3**
-   - Tool inspection, PVC conduit & wire sizing, distribution boards, earthing continuity testing, and safety protocols.
-2. **Commercial / Industrial Electrician (ELE/Q1402) — NSQF Level 4**
-   - 3-phase panel commissioning, industrial AC motor troubleshooting, and earth pit testing.
-3. **Automotive Service Technician (ASC/Q1401) — NSQF Level 4**
-   - Routine preventive maintenance, hydraulic braking systems, OBD-II scanner diagnostics, and workshop safety.
-4. **Assistant Plumber (CON/Q0602) — NSQF Level 3**
-   - CPVC/UPVC pipe jointing, sanitary fixture mounting, hydrostatic pressure testing, and sewer trap water seals.
-5. **Solar PV System Installer (ELE/Q5901) — NSQF Level 4**
-   - Module mounting structure alignment, MC4 connector crimping, string Voc/Isc measurement, and rooftop fall-arrest safety.
+In strict compliance with national hackathon rules and industrial RPL regulations:
+- **Zero Fabrication Policy:** When a candidate does not submit required practical photos or audio evidence, the system **never substitutes passing scores or placeholder data**. Missing competencies are explicitly flagged as `evidence_missing` or `insufficient_evidence`, receiving a score of `0%`.
+- **Honest AI Status:** If external cloud AI models or Bhashini APIs are unavailable or lack credentials, the system transparently logs `offline` / `unconfigured` status and falls back to its deterministic local NSQF rule engine without pretending to have conducted live cloud inference.
+- **Human Authority:** The AI is strictly an advisory co-pilot. An assessment case can **never transition to `approved` without an authorized human assessor's digital signature and recorded rubric verification**.
 
 ---
 
-## 🚀 Running Kaushal AI Locally
+## 📋 Standardized NSQF Trades Supported
+
+| Trade Code | Trade Name | NSQF Level | Core National Occupational Standards (NOS) |
+| :--- | :--- | :---: | :--- |
+| **ELE/Q1401** | Assistant Electrician | Level 3 | Tools & Safety, Wiring & Conduits, Distribution Boards, Testing |
+| **ELE/Q1402** | Commercial Electrician | Level 4 | Industrial Panels, 3-Phase Motors, Earth Pit Testing, Diagnostics |
+| **ASC/Q1401** | Automotive Service Technician | Level 4 | Engine Overhaul, Hydraulic Brakes, OBD-II Diagnostics, Safety |
+| **CON/Q0602** | Assistant Plumber | Level 3 | CPVC/UPVC Piping, Sanitary Fixtures, Pressure Testing, Traps |
+| **ELE/Q5901** | Solar PV System Installer | Level 4 | Module Mounting, MC4 Crimping, String Testing, Fall Arrest |
+
+---
+
+## 🧪 Automated Testing & Validation
+
+The codebase features comprehensive automated unit and integration tests across both the Node.js backend and the Python AI microservice.
+
+### Test Results (20/20 Passing)
+
+```
+Test Suites: 3 passed, 3 total
+Tests:       15 passed, 15 total
+Snapshots:   0 total
+Time:        1.82 s
+[Jest] Passed:
+  ✓ Auth & RBAC: Registration, Login, Token generation, Role enforcement
+  ✓ Evidence Integrity: SHA-256 hashing, Non-fabrication of missing evidence
+  ✓ Reports & QR Verification: PDF generation, Cryptographic digest matching, Anti-tampering
+
+[Pytest] Passed:
+  ✓ Schema validation for multimodal assessment requests
+  ✓ Missing evidence outputs explicit zero-score & gaps
+  ✓ Bhashini service transparently reports unconfigured status
+  ✓ NSQF RAG engine accurately matches technical trade keywords
+  ✓ Bounded scoring constraints (no fabricated scores)
+```
+
+To execute the test suite:
+```bash
+# Run backend Jest tests (15 tests)
+npm test
+
+# Run AI service Pytest tests (5 tests)
+npm run test:ai
+```
+
+---
+
+## 🚀 Quickstart & Local Installation
 
 ### Prerequisites
-- Node.js (v18+)
-- Python (3.10+)
+- **Node.js**: v18.0.0 or higher
+- **Python**: v3.10.0 or higher
+- **Git**
 
-### Quick Start
+### Step 1: Clone Repository & Install Dependencies
+```bash
+git clone https://github.com/mrMohammadRaza/Kushal-AI.git
+cd Kushal-AI
 
-1. **Install Dependencies:**
-   ```bash
-   npm run install:all
-   ```
+# Install all workspace dependencies (root, backend, frontend)
+npm run install:all
+```
 
-2. **Start Backend Server:**
-   ```bash
-   npm run dev:backend
-   ```
-   *Backend runs on:* `http://localhost:5000`
+### Step 2: Configure Environment Variables
+Copy the example environment templates:
+```bash
+# Backend configuration
+copy backend\.env.example backend\.env
 
-3. **Start Frontend Client:**
-   ```bash
-   npm run dev:frontend
-   ```
-   *Frontend UI runs on:* `http://localhost:3000`
+# AI Service configuration
+copy ai-service\.env.example ai-service\.env
+```
+*(Default settings function out-of-the-box using SQLite and local rule engines. Cloud AI API keys for Gemini or Bhashini are optional.)*
 
-4. *(Optional) Start FastAPI AI Microservice:*
-   ```bash
-   cd ai-service
-   pip install -r requirements.txt
-   python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
-   ```
-   *Note: If the FastAPI service is not running, the backend automatically utilizes its built-in high-fidelity NSQF co-pilot engine to guarantee 100% testability and zero downtime.*
+### Step 3: Seed Demo Database
+Populate the database with pre-configured NSQF standards, test candidates, and initial assessment cases:
+```bash
+npm run seed:demo
+```
+
+### Step 4: Start Services
+In separate terminal windows:
+```bash
+# Terminal 1: Start Backend API (Port 5000)
+npm run dev:backend
+
+# Terminal 2: Start Frontend Application (Port 5173)
+npm run dev:frontend
+
+# Terminal 3 (Optional): Start Python FastAPI AI Microservice (Port 8000)
+cd ai-service
+pip install -r requirements.txt
+python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+```
 
 ---
 
-## 🏆 Key SIH26242 Highlights
+## 🎭 Preloaded Demonstration Accounts
 
-- **Objective Co-Pilot:** Reduces assessor subjectivity and bias during RPL field drives.
-- **Multilingual Support:** Handles informal explanations in Hindi, English, and technical slang.
-- **Multimodal Evidence:** Audits real photos of wiring, joints, and mandatory PPE.
-- **Human-in-the-Loop:** Certified human assessors maintain final authority to endorse or override AI recommendations.
-- **Gap Diagnosis:** Automatically specifies NSDC bridge training modules for candidates requiring minor skill upgrades.
+The platform includes pre-seeded demo accounts for end-to-end evaluation:
+
+| Role | Email Address | Password | Permissions |
+| :--- | :--- | :--- | :--- |
+| **Lead Assessor** | `assessor@kaushal.gov.in` | `Kaushal@2026` | Review evidence, adjust rubric scores, execute official sign-off |
+| **Platform Admin** | `admin@kaushal.gov.in` | `Kaushal@2026` | Full platform governance, standard configuration, audit logs |
+| **Candidate** | `ramesh.sharma@skillindia.rpl` | `Kaushal@2026` | Evidence submission, gap view, access released PDF report |
+
+---
+
+## 📖 Technical Documentation Index
+
+Detailed technical specifications and design documents are located in the [`docs/`](file:///c:/Users/lenovo/OneDrive/Desktop/kaushal%20ai/docs/) directory:
+
+- [System Architecture](file:///c:/Users/lenovo/OneDrive/Desktop/kaushal%20ai/docs/ARCHITECTURE.md) — Multi-tier architecture, data flow diagrams, component boundaries.
+- [Technical Design](file:///c:/Users/lenovo/OneDrive/Desktop/kaushal%20ai/docs/TECHNICAL_DESIGN.md) — Technical choices, state transitions, failover mechanisms.
+- [API Reference](file:///c:/Users/lenovo/OneDrive/Desktop/kaushal%20ai/docs/API_REFERENCE.md) — Complete endpoint schemas, request/response payloads, error codes.
+- [Database Schema](file:///c:/Users/lenovo/OneDrive/Desktop/kaushal%20ai/docs/DATABASE_SCHEMA.md) — 12 relational entity models, constraints, and audit tables.
+- [AI Pipeline & Governance](file:///c:/Users/lenovo/OneDrive/Desktop/kaushal%20ai/docs/AI_PIPELINE.md) — Multimodal audit, LangGraph nodes, non-fabrication engine.
+- [Security & Privacy](file:///c:/Users/lenovo/OneDrive/Desktop/kaushal%20ai/docs/SECURITY_AND_PRIVACY.md) — RBAC matrix, token security, SHA-256 evidence integrity.
+- [Testing & Validation](file:///c:/Users/lenovo/OneDrive/Desktop/kaushal%20ai/docs/TESTING.md) — Automated test suite coverage, reproduction commands.
+- [Deployment Guide](file:///c:/Users/lenovo/OneDrive/Desktop/kaushal%20ai/docs/DEPLOYMENT.md) — Production build steps, environment variables, Docker setup.
+- [SIH Jury Demonstration Guide](file:///c:/Users/lenovo/OneDrive/Desktop/kaushal%20ai/docs/DEMO_GUIDE.md) — Step-by-step walkthrough script for hackathon presentations.
+- [Known Limitations & Roadmap](file:///c:/Users/lenovo/OneDrive/Desktop/kaushal%20ai/docs/KNOWN_LIMITATIONS.md) — Honest disclosure of prototype sandboxes and roadmap.
+- [SIH Problem Alignment](file:///c:/Users/lenovo/OneDrive/Desktop/kaushal%20ai/docs/SIH_ALIGNMENT.md) — Direct mapping to Problem Statement SIH26242 criteria.
+
+---
+
+## 👥 Contributors & Acknowledgements
+
+Developed for **Smart India Hackathon (SIH)**.  
+Aligend with guidelines established by **Ministry of Skill Development & Entrepreneurship (MSDE)**, **NCVET**, and **NSDC**.

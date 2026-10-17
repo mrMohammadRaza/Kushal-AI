@@ -16,11 +16,11 @@ from app.schemas.assessment import (
 
 class LangGraphAssessmentPipeline:
     """
-    Advanced StateGraph assessment pipeline powered by Google Gemini:
-    Stage 1: Gemini + Bhashini Vernacular STT / Dialect Understanding
-    Stage 2: Multimodal Practical Vision Inspection with XAI Bounding Boxes
-    Stage 3: NSQF RAG Rubric & Competency Synthesis
-    Stage 4: Anti-Fraud Verification & Liveness Audit
+    RPL Assessment Pipeline:
+    Stage 1: Speech Processing & Indic Understanding (Bhashini + Gemini)
+    Stage 2: Multimodal Practical Vision Inspection (Gemini)
+    Stage 3: NSQF Competency Mapping & Gap Diagnosis
+    Stage 4: Anti-Fraud Verification Audit
     """
 
     def __init__(self):
@@ -32,7 +32,6 @@ class LangGraphAssessmentPipeline:
         trade_id = request_data.get("trade_id")
         candidate_id = request_data.get("candidate_id")
         viva_answer = request_data.get("viva_answer", "")
-        viva_scenario_id = request_data.get("viva_scenario_id", "")
         image_path = request_data.get("image_path")
         audio_path = request_data.get("audio_path")
         anti_fraud_input = request_data.get("anti_fraud_audit")
@@ -42,48 +41,46 @@ class LangGraphAssessmentPipeline:
             first_key = list(self.rag.trades_by_id.keys())[0] if self.rag.trades_by_id else "electrician-l3"
             trade = self.rag.get_trade(first_key)
 
-        # 1. Pipeline Stage 1: Multilingual / Vernacular Viva Voce Speech Processing
+        has_image = bool(image_path and os.path.exists(image_path))
+        has_viva = bool(viva_answer and viva_answer.strip())
+
+        # 1. Stage 1: Speech & Vernacular viva processing
         viva_transcript_data = self._process_viva(viva_answer, trade)
 
-        # 2. Pipeline Stage 2: Multimodal Practical Vision Inspection with XAI Bounding Boxes
-        vision_data = self._analyze_practical_vision(image_path, trade)
+        # 2. Stage 2: Practical vision evidence inspection
+        vision_data = self._analyze_practical_vision(image_path if has_image else None, trade)
 
-        # 3. Pipeline Stage 3: Gemini NSQF Rubric Alignment & Scoring
+        # 3. Stage 3: Competency synthesis & gap identification
         synthesis = self.gemini.synthesize_nsqf_evaluation(
             trade=trade,
             viva_data=viva_transcript_data.model_dump(),
             vision_data=vision_data.model_dump()
         )
 
-        nos_results = self._parse_nos_results(synthesis.get("nosResults", []), trade)
-        overall_score = int(synthesis.get("overallScore", 90))
-        is_certified = overall_score >= 70
+        nos_results = self._parse_nos_results(synthesis.get("nosResults", []), trade, has_viva, has_image)
+        overall_score = synthesis.get("overallScore")
         nsqf_level = trade.get("nsqfLevel", 3)
+        status = synthesis.get("status", "assessor_review_required" if (has_image and has_viva) else "insufficient_evidence")
 
         recommendation = synthesis.get(
             "recommendation",
-            f"Recommended for NSQF Level {nsqf_level} Certification under RPL Category A."
-            if is_certified
-            else "Recommended for 12-hour Bridge Skill Training before re-evaluation."
+            f"Candidate evidence logged for NSQF Level {nsqf_level} assessor review."
         )
 
         strengths = synthesis.get("strengths") or [
-            f"Demonstrated practical familiarity with core {trade.get('trade')} operations.",
-            "Appropriate adherence to occupational safety gear (PPE) and tool handling.",
-            "Bhashini & Gemini verified oral explanation aligned with Indian Standards (IS/BIS)."
+            f"Familiarity with foundational {trade.get('trade')} operations."
         ]
 
         gap_areas = synthesis.get("gapAreas") or [
-            "Formal documentation, job-card notations, and electrical schematic symbol reading.",
-            "Specific calculation of ambient temperature derating factors."
+            "Physical execution speed and formal schematic interpretation requires verification."
         ]
 
         bridge_modules = synthesis.get("bridgeTrainingModules") or [
-            f"Module 1: NSQF Level {nsqf_level} Quality Assurance & Diagnostic Protocol",
-            "Module 2: Industrial Safety, PPE Compliance & Bureau of Indian Standards (BIS)"
+            f"Module 1: NSQF Level {nsqf_level} Industrial Safety and BIS/IS Standards",
+            "Module 2: Technical Schematics and Digital Job-Card Documentation"
         ]
 
-        # 4. Pipeline Stage 4: Anti-Fraud Verification Audit
+        # 4. Stage 4: Anti-Fraud Verification Audit (preserves client data if provided; does not fabricate)
         anti_fraud_audit = self._verify_anti_fraud_audit(anti_fraud_input)
 
         return AssessmentResponse(
@@ -93,9 +90,13 @@ class LangGraphAssessmentPipeline:
             nsqfLevel=nsqf_level,
             candidateId=candidate_id,
             overallScore=overall_score,
-            status="Certified" if is_certified else "Conditional RPL",
+            status=status,
             recommendation=recommendation,
-            confidenceScore=0.98,
+            confidenceScore=float(synthesis.get("confidenceScore", 0.75)),
+            evidencePresent={
+                "hasPracticalPhoto": has_image,
+                "hasVivaExplanation": has_viva
+            },
             visionAnalysis=vision_data,
             vivaTranscript=viva_transcript_data,
             nosResults=nos_results,
@@ -107,123 +108,121 @@ class LangGraphAssessmentPipeline:
         )
 
     def _process_viva(self, raw_answer: str, trade: Dict[str, Any]) -> VivaTranscriptResult:
-        """
-        Uses Gemini Vernacular Understanding with Bhashini integration.
-        """
+        if not raw_answer or not raw_answer.strip():
+            return VivaTranscriptResult(
+                transcript=None,
+                transcriptEnglish=None,
+                languageDetected="none",
+                technicalKeywordsFound=[],
+                conceptClarityRating="Not Assessed",
+                bhashiniTranslationUsed=False,
+                timestampCitations=[]
+            )
+
+        # Call Bhashini service for translation/transliteration
+        bhashini_res = self.bhashini.process_speech_and_translation(raw_answer)
         gemini_result = self.gemini.analyze_viva_explanation(raw_answer, trade)
 
-        citations: List[AudioTimestampCitation] = []
-        for c in gemini_result.get("timestampCitations", []):
-            citations.append(AudioTimestampCitation(
-                start_sec=float(c.get("start_sec", 0.0)),
-                end_sec=float(c.get("end_sec", 3.0)),
-                text_hi=c.get("text_hi", ""),
-                text_en=c.get("text_en", ""),
-                matchedKeyword=c.get("matchedKeyword", "Standard Procedure"),
-                pcCode=c.get("pcCode", "PC1.1")
-            ))
-
         return VivaTranscriptResult(
-            transcript=gemini_result.get("transcript") or raw_answer,
-            transcriptEnglish=gemini_result.get("transcriptEnglish", raw_answer),
-            languageDetected=gemini_result.get("languageDetected", "hi-IN"),
-            technicalKeywordsFound=gemini_result.get("technicalKeywordsFound", ["Safety", "Tools", "Procedure"]),
-            conceptClarityRating=gemini_result.get("conceptClarityRating", "High"),
-            bhashiniTranslationUsed=True,
-            timestampCitations=citations
+            transcript=raw_answer,
+            transcriptEnglish=gemini_result.get("transcriptEnglish") or bhashini_res.get("englishTranslation") or raw_answer,
+            languageDetected=gemini_result.get("languageDetected") or bhashini_res.get("sourceLanguage", "hi-IN"),
+            technicalKeywordsFound=gemini_result.get("technicalKeywordsFound", []),
+            conceptClarityRating=gemini_result.get("conceptClarityRating", "Moderate"),
+            bhashiniTranslationUsed=bhashini_res.get("liveProviderConnected", False),
+            timestampCitations=[]
         )
 
-    def _analyze_practical_vision(self, image_path: Any, trade: Dict[str, Any]) -> VisionAnalysisResult:
-        """
-        Uses Gemini Multimodal Vision to inspect candidate practical evidence.
-        """
+    def _analyze_practical_vision(self, image_path: Optional[str], trade: Dict[str, Any]) -> VisionAnalysisResult:
         gemini_result = self.gemini.analyze_practical_vision(image_path, trade)
 
         bounding_boxes: List[VisionBoundingBox] = []
         for box in gemini_result.get("boundingBoxes", []):
             bounding_boxes.append(VisionBoundingBox(
-                label=box.get("label", "Detected Equipment"),
-                box_2d=box.get("box_2d", [0.2, 0.2, 0.8, 0.8]),
-                confidence=float(box.get("confidence", 0.95)),
-                pcCode=box.get("pcCode", "PC1.1")
+                label=box.get("label", "Object"),
+                box_2d=box.get("box_2d", [0.0, 0.0, 0.0, 0.0]),
+                confidence=float(box.get("confidence", 0.8)),
+                pcCode=box.get("pcCode")
             ))
 
         return VisionAnalysisResult(
+            imageAudited=gemini_result.get("imageAudited", False),
             ppeCompliance=gemini_result.get("ppeCompliance", {
-                "helmetDetected": True,
-                "glovesDetected": True,
-                "safetyShoesVerified": True,
-                "ppeScore": 95,
-                "remarks": "Candidate in full PPE compliance."
+                "helmetDetected": None,
+                "glovesDetected": None,
+                "safetyShoesVerified": None,
+                "ppeScore": 0,
+                "remarks": "Image not submitted."
             }),
             workmanshipQuality=gemini_result.get("workmanshipQuality", {
-                "toolHandling": "Competent tool handling",
-                "finishing": "Clean finish meeting standards",
-                "neatnessScore": 90
+                "toolHandling": "Unassessed",
+                "finishing": "Unassessed",
+                "neatnessScore": 0
             }),
-            toolsIdentified=gemini_result.get("toolsIdentified", trade.get("standardTools", [])[:4]),
+            toolsIdentified=gemini_result.get("toolsIdentified", []),
             boundingBoxes=bounding_boxes
         )
 
-    def _parse_nos_results(self, nos_data: List[Dict[str, Any]], trade: Dict[str, Any]) -> List[NOSResult]:
-        if not nos_data:
-            # Fallback to trade default NOS if empty
-            nos_data = trade.get("nosList", [])
-
+    def _parse_nos_results(
+        self,
+        nos_data: List[Dict[str, Any]],
+        trade: Dict[str, Any],
+        has_viva: bool,
+        has_image: bool
+    ) -> List[NOSResult]:
+        trade_nos_list = trade.get("nosList", [])
         results: List[NOSResult] = []
-        for item in nos_data:
-            pcs: List[PerformanceCriterionResult] = []
-            raw_pcs = item.get("performanceCriteria", [])
-            for pc in raw_pcs:
-                if isinstance(pc, dict):
-                    pcs.append(PerformanceCriterionResult(
-                        code=pc.get("code", "PC1.1"),
-                        description=pc.get("description", "Standard execution"),
-                        status=pc.get("status", "Competent"),
-                        score=int(pc.get("score", 88)),
-                        evidence=pc.get("evidence", "Verified via Gemini multimodal evidence inspection.")
-                    ))
-                elif isinstance(pc, str):
-                    parts = pc.split(":", 1)
-                    code = parts[0].strip() if len(parts) > 1 else "PC"
-                    desc = parts[1].strip() if len(parts) > 1 else pc
-                    pcs.append(PerformanceCriterionResult(
-                        code=code,
-                        description=desc,
-                        status="Competent",
-                        score=88,
-                        evidence="Verified via Gemini multimodal photo inspection and viva voce terminology."
-                    ))
 
-            score = int(item.get("score", 90))
+        nos_map = {n.get("nosCode"): n for n in nos_data if isinstance(n, dict)}
+
+        for nos in trade_nos_list:
+            nos_code = nos.get("nosCode")
+            synthesis_item = nos_map.get(nos_code, {})
+            weight = int(nos.get("weightage", 25))
+
+            score = int(synthesis_item.get("score", 70 if (has_viva and has_image) else (40 if has_image else 0)))
+            status = "partially_supported" if score >= 60 else ("insufficient_evidence" if score > 0 else "evidence_missing")
+
+            pcs: List[PerformanceCriterionResult] = []
+            for pc in nos.get("performanceCriteria", []):
+                parts = pc.split(":", 1)
+                code = parts[0].strip() if len(parts) > 1 else "PC"
+                desc = parts[1].strip() if len(parts) > 1 else pc
+
+                pc_status = "partially_supported" if (has_viva or has_image) else "evidence_missing"
+                pc_score = score if (has_viva or has_image) else 0
+
+                pcs.append(PerformanceCriterionResult(
+                    code=code,
+                    description=desc,
+                    status=pc_status,
+                    score=pc_score,
+                    evidence="Evidence observed from multimodal upload." if (has_viva or has_image) else "Evidence missing."
+                ))
+
             results.append(NOSResult(
-                nosCode=item.get("nosCode", "NOS-01"),
-                title=item.get("title", "Core Operations"),
-                weightage=int(item.get("weightage", 25)),
+                nosCode=nos_code,
+                title=nos.get("title", "Core Operations"),
+                weightage=weight,
                 score=score,
-                status=item.get("status", "Competent" if score >= 75 else "Partially Competent"),
+                status=status,
                 performanceCriteria=pcs,
-                feedback=item.get("feedback", f"Candidate demonstrated competence under NSQF criteria for {item.get('title')}.")
+                feedback=synthesis_item.get("feedback", f"Criteria evaluation for {nos.get('title')}.")
             ))
 
         return results
 
-    def _verify_anti_fraud_audit(self, anti_fraud_input: Optional[Dict[str, Any]]) -> AntiFraudAudit:
-        if anti_fraud_input:
-            return AntiFraudAudit(
-                geoTag=anti_fraud_input.get("geoLocation"),
-                livenessVerified=anti_fraud_input.get("livenessVerified", True),
-                confidence=anti_fraud_input.get("confidence", 0.98),
-                gestureRecognized=anti_fraud_input.get("gestureRecognized", "thumbs_up"),
-                antiSpoofCheck="Passed (Real Human Detected via Gemini Anti-Spoof Audit)",
-                capturedAt=anti_fraud_input.get("capturedAt")
-            )
+    def _verify_anti_fraud_audit(self, anti_fraud_input: Optional[Dict[str, Any]]) -> Optional[AntiFraudAudit]:
+        if not anti_fraud_input:
+            return None
+
         return AntiFraudAudit(
-            geoTag={"latitude": 25.3176, "longitude": 82.9739, "address": "Varanasi Skill Hub, UP"},
-            livenessVerified=True,
-            confidence=0.98,
-            gestureRecognized="thumbs_up",
-            antiSpoofCheck="Passed (Real Human Detected via Gemini Anti-Spoof Audit)"
+            geoTag=anti_fraud_input.get("geoLocation") or anti_fraud_input.get("geoTag"),
+            livenessVerified=bool(anti_fraud_input.get("livenessVerified", False)),
+            confidence=float(anti_fraud_input.get("confidence", 0.0)) if anti_fraud_input.get("confidence") is not None else None,
+            gestureRecognized=anti_fraud_input.get("gestureRecognized"),
+            antiSpoofCheck=anti_fraud_input.get("antiSpoofCheck", "Client verified; subject to assessor review"),
+            capturedAt=anti_fraud_input.get("capturedAt")
         )
 
 langgraph_pipeline = LangGraphAssessmentPipeline()

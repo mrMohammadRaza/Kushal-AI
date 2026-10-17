@@ -3,16 +3,16 @@ const path = require('path');
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
 const PREFERRED_MODELS = [
-  'gemini-3.5-flash',
-  'gemini-3.5-flash-lite',
-  'gemini-3.7-flash',
+  'gemini-2.5-flash',
+  'gemini-2.0-flash',
+  'gemini-1.5-flash',
   'gemini-flash-latest'
 ];
 
 /**
- * Call Google Gemini REST API with multi-model fallback and retry.
+ * Call Google Gemini REST API with multi-model fallback, retry, and timeout.
  */
-async function callGemini({ contents, systemInstruction, jsonMode = true, temperature = 0.2 }) {
+async function callGemini({ contents, systemInstruction, jsonMode = true, temperature = 0.1, timeoutMs = 20000 }) {
   if (!GEMINI_API_KEY) return null;
 
   const body = {
@@ -35,7 +35,7 @@ async function callGemini({ contents, systemInstruction, jsonMode = true, temper
     for (let attempt = 0; attempt < 2; attempt++) {
       try {
         const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 16000);
+        const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
         const res = await fetch(url, {
           method: 'POST',
@@ -51,14 +51,13 @@ async function callGemini({ contents, systemInstruction, jsonMode = true, temper
           const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
           if (text) return text;
         } else if (res.status === 503 || res.status === 429) {
-          // Pause briefly on high demand or rate limit
-          await new Promise(r => setTimeout(r, 1200));
+          await new Promise(r => setTimeout(r, 1500));
           continue;
         } else {
           break; // Try next model
         }
       } catch (err) {
-        break; // Try next model
+        break; // Try next model on network/timeout error
       }
     }
   }
@@ -67,155 +66,131 @@ async function callGemini({ contents, systemInstruction, jsonMode = true, temper
 }
 
 /**
- * Full multimodal candidate evaluation using Gemini.
+ * Honest, evidence-grounded candidate evaluation using Gemini.
+ * Strictly adheres to NSQF criteria and NEVER hallucinates evidence or passing scores.
  */
 async function evaluateWithGemini({ trade, candidateId, vivaAnswer, imagePath, audioPath, assessorNotes, antiFraudAudit }) {
   const tradeTitle = trade.trade || trade.title || "Electrician";
   const nsqfLevel = trade.nsqfLevel || 3;
-  const tools = trade.standardTools || [];
+  const standardTools = trade.standardTools || [];
+  const mandatoryPPE = trade.mandatoryPPE || [];
   const nosList = trade.nosList || [];
 
   const parts = [];
+  let imageAttached = false;
 
-  // If practical photo evidence is attached, encode and include in multimodal prompt
+  // 1. Check if real image evidence exists and attach
   if (imagePath && fs.existsSync(imagePath)) {
     try {
       const ext = path.extname(imagePath).toLowerCase();
       const mimeType = ext === '.png' ? 'image/png' : 'image/jpeg';
-      const base64Data = fs.readFileSync(imagePath).toString('base64');
-      parts.push({
-        inlineData: {
-          mimeType,
-          data: base64Data
-        }
-      });
+      const fileBuffer = fs.readFileSync(imagePath);
+      if (fileBuffer.length > 0) {
+        parts.push({
+          inlineData: {
+            mimeType,
+            data: fileBuffer.toString('base64')
+          }
+        });
+        imageAttached = true;
+      }
     } catch (err) {
-      console.warn('[Gemini Service] Could not read image file:', err.message);
+      console.warn('[Gemini Service] Image read warning:', err.message);
     }
   }
 
-  const safeVivaText = JSON.stringify(vivaAnswer || 'Candidate demonstrated practical procedure and answered oral questions on circuit isolation and Megger test.');
+  const vivaSubmitted = Boolean(vivaAnswer && vivaAnswer.trim().length > 0);
 
   const prompt = `
-You are the Lead Vocational Assessor for India's Recognition of Prior Learning (RPL) under the National Skills Qualification Framework (NSQF).
-Evaluate candidate practical and verbal evidence for trade: "${tradeTitle}" (NSQF Level ${nsqfLevel}).
+You are the AI Vocational Co-Pilot for India's Recognition of Prior Learning (RPL) under the National Skills Qualification Framework (NSQF).
+Your role is to assist qualified human assessors by inspecting submitted candidate evidence against official standards.
+IMPORTANT RULES:
+1. Evaluate ONLY the submitted evidence.
+2. If no photo is attached, state that practical image evidence is missing. Do NOT hallucinate tool detections or bounding boxes.
+3. If no viva explanation is provided, state that verbal evidence is missing. Do NOT hallucinate transcripts.
+4. Distinguish between:
+   - "Observed Facts": What is visibly seen or spoken.
+   - "Candidate Claims": What the candidate verbally states.
+   - "AI Inferences": Your probabilistic reasoning.
+   - "Missing Evidence": Criteria where no evidence was supplied.
+   - "Recommended Next Steps": Specific questions or practical tests for the human assessor.
+5. The AI does NOT issue certification. Your recommendation must be one of:
+   - "assessor_review_required" (if sufficient evidence is present to recommend human review)
+   - "insufficient_evidence" (if key items are missing)
+   - "requires_practical_test" (if viva/image raises safety or execution doubts)
 
-Candidate Viva Explanation:
-${safeVivaText}
-
+Target Trade: "${tradeTitle}" (NSQF Level ${nsqfLevel})
+Candidate Viva Text Provided: ${vivaSubmitted ? JSON.stringify(vivaAnswer) : "NO VIVA EXPLANATION PROVIDED"}
+Practical Photo Provided: ${imageAttached ? "YES, IMAGE ATTACHED" : "NO IMAGE ATTACHED"}
+Mandatory Trade PPE: ${JSON.stringify(mandatoryPPE)}
+Official Trade Tools: ${JSON.stringify(standardTools)}
 Trade NOS & Criteria:
 ${JSON.stringify(nosList.map(n => ({ nosCode: n.nosCode, title: n.title, criteria: n.performanceCriteria || [] })))}
 
-Tools standard for trade:
-${JSON.stringify(tools)}
-
-Return a comprehensive JSON assessment strictly conforming to this structure:
+Return a strict JSON response conforming to this exact structure:
 {
-  "overallScore": integer (70 to 98),
-  "status": "Certified",
-  "recommendation": "string describing NSQF Level ${nsqfLevel} certification recommendation",
-  "confidenceScore": 0.98,
+  "overallScore": integer or null (computed ONLY from submitted evidence; if no evidence, null),
+  "status": "assessor_review_required" or "insufficient_evidence" or "requires_practical_test",
+  "recommendation": "evidence-linked suggestion for the human assessor",
+  "confidenceScore": float between 0.0 and 1.0 representing AI confidence in analysis,
+  "evidencePresent": {
+    "hasPracticalPhoto": ${imageAttached},
+    "hasVivaExplanation": ${vivaSubmitted}
+  },
   "visionAnalysis": {
+    "imageAudited": ${imageAttached},
     "ppeCompliance": {
-      "helmetDetected": boolean,
-      "glovesDetected": boolean,
-      "safetyShoesVerified": boolean,
-      "ppeScore": integer (85 to 100),
-      "remarks": "string detailing PPE adherence"
+      "helmetDetected": boolean or null,
+      "glovesDetected": boolean or null,
+      "safetyShoesVerified": boolean or null,
+      "ppeScore": integer (0 to 100),
+      "remarks": "factual description of observed safety adherence"
     },
     "workmanshipQuality": {
-      "toolHandling": "Competent grip on calibrated torque instruments",
-      "finishing": "Clean mechanical connection meeting IS standards",
-      "neatnessScore": integer (80 to 98)
+      "toolHandling": "factual observation of tool grip or posture",
+      "finishing": "factual observation of work output",
+      "neatnessScore": integer (0 to 100)
     },
-    "toolsIdentified": ["list", "of", "tools"],
+    "toolsIdentified": ["list of visibly verified tools"],
     "boundingBoxes": [
       {
-        "label": "Dielectric Safety Gloves (Class 1)",
-        "box_2d": [0.18, 0.22, 0.44, 0.48],
-        "confidence": 0.96,
-        "pcCode": "PC1.1"
-      },
-      {
-        "label": "3-Phase Industrial Busbar & Lug Termination",
-        "box_2d": [0.42, 0.45, 0.88, 0.85],
-        "confidence": 0.94,
-        "pcCode": "PC1.2"
-      },
-      {
-        "label": "Calibrated 1000V Megger Insulation Tester",
-        "box_2d": [0.55, 0.12, 0.85, 0.38],
-        "confidence": 0.92,
-        "pcCode": "PC2.1"
+        "label": "Name of visibly identified object",
+        "box_2d": [ymin, xmin, ymax, xmax],
+        "confidence": float,
+        "pcCode": "relevant PC code or null"
       }
     ]
   },
   "vivaTranscript": {
-    "transcript": ${safeVivaText},
-    "transcriptEnglish": "First isolated the 3-phase supply and applied lock out. Verified phase sequence R-Y-B and tested insulation resistance with 1000V Megger.",
-    "languageDetected": "hi-IN",
-    "technicalKeywordsFound": ["Isolation", "Lockout", "1000V Megger", "Phase Sequence", "Earthing"],
-    "conceptClarityRating": "High",
-    "bhashiniTranslationUsed": true,
-    "timestampCitations": [
-      {
-        "start_sec": 0.5,
-        "end_sec": 2.8,
-        "text_hi": "पहले 3-फेज मेन आइसोलेटर काटा और लॉक आउट लगाया",
-        "text_en": "First isolated the 3-phase supply and applied lock out",
-        "matchedKeyword": "Isolation & Lockout",
-        "pcCode": "PC1.1"
-      },
-      {
-        "start_sec": 2.9,
-        "end_sec": 5.2,
-        "text_hi": "रोटेशन मीटर से R-Y-B चेक किया और बसबार बोल्ट टॉर्क किए",
-        "text_en": "Verified phase sequence R-Y-B and torqued busbar bolts",
-        "matchedKeyword": "Phase Sequence & Torque",
-        "pcCode": "PC1.2"
-      },
-      {
-        "start_sec": 5.3,
-        "end_sec": 8.4,
-        "text_hi": "1000V मेगर से मोटर वाइंडिंग का इंसुलेशन 50 मेगा-ओम मिला",
-        "text_en": "Insulation resistance with 1000V Megger measured 50 Megohms",
-        "matchedKeyword": "1000V Megger Insulation Test",
-        "pcCode": "PC2.1"
-      }
-    ]
+    "transcript": ${vivaSubmitted ? JSON.stringify(vivaAnswer) : "null"},
+    "transcriptEnglish": "English translation or clarification if regional text",
+    "languageDetected": "detected language code (e.g., hi-IN, mr-IN, en-IN)",
+    "technicalKeywordsFound": ["keywords present in candidate response"],
+    "conceptClarityRating": "High" or "Moderate" or "Low" or "Not Assessed",
+    "timestampCitations": []
   },
   "nosResults": [
     ${nosList.map(n => `{
       "nosCode": "${n.nosCode}",
       "title": "${n.title}",
       "weightage": ${n.weightage || 25},
-      "score": 90,
-      "status": "Competent",
-      "feedback": "Candidate thoroughly satisfies criteria for ${n.title}.",
+      "score": integer (0 to 100),
+      "status": "verified_by_assessor" or "partially_supported" or "insufficient_evidence" or "evidence_missing",
+      "feedback": "rationale referencing evidence",
       "performanceCriteria": [
-        {
-          "code": "PC1.1",
-          "description": "Adhere to safety procedures and isolation",
-          "status": "Competent",
-          "score": 90,
-          "evidence": "Verified via Gemini vision inspection and spoken safety rationale."
-        }
+        ${(n.performanceCriteria || []).map(pc => `{
+          "code": "${pc.split(':')[0]}",
+          "description": ${JSON.stringify(pc)},
+          "status": "partially_supported" or "evidence_missing" or "not_assessed",
+          "score": integer (0 to 100),
+          "evidence": "observed fact or missing evidence note"
+        }`).join(',\n')}
       ]
     }`).join(',\n')}
   ],
-  "strengths": [
-    "Demonstrated practical familiarity with core ${tradeTitle} operations.",
-    "Adherence to occupational safety gear (PPE) and proper tool handling.",
-    "Spoken explanation aligned with Indian Standards (IS/BIS)."
-  ],
-  "gapAreas": [
-    "Formal documentation and job-card notation standards.",
-    "Ambient temperature derating calculations."
-  ],
-  "bridgeTrainingModules": [
-    "Module 1: NSQF Level ${nsqfLevel} Quality Assurance Protocol",
-    "Module 2: Industrial Safety, PPE Compliance & Bureau of Indian Standards (BIS)"
-  ]
+  "strengths": ["genuine observed strengths"],
+  "gapAreas": ["identified evidence gaps or procedural omissions"],
+  "bridgeTrainingModules": ["recommended training modules mapped to gap areas"]
 }
 `;
 
@@ -223,7 +198,7 @@ Return a comprehensive JSON assessment strictly conforming to this structure:
 
   const rawJson = await callGemini({
     contents: [{ parts }],
-    systemInstruction: "You are the official Skill India NCVET AI evaluation auditor.",
+    systemInstruction: "You are the objective, standards-aligned NCVET NSQF RPL AI Evaluation Co-Pilot. You do not certify; you audit evidence and prepare explainable recommendations for human assessors.",
     jsonMode: true
   });
 
@@ -231,24 +206,18 @@ Return a comprehensive JSON assessment strictly conforming to this structure:
     try {
       const parsed = JSON.parse(rawJson);
       return {
-        source: 'google-gemini-3.5',
+        source: 'google-gemini',
         tradeId: trade.id,
         tradeTitle,
-        qpCode: trade.qpCode || 'ELE/Q3102',
+        qpCode: trade.qpCode,
         nsqfLevel,
         candidateId,
         assessorSignOffRequired: true,
-        antiFraudAudit: antiFraudAudit || {
-          livenessVerified: true,
-          confidence: 0.98,
-          gestureRecognized: "thumbs_up",
-          antiSpoofCheck: "Passed (Real Human Detected via Gemini Audit)",
-          geoLocation: { latitude: 25.3176, longitude: 82.9739, address: "Varanasi Skill Hub, UP" }
-        },
+        antiFraudAudit: antiFraudAudit || null,
         ...parsed
       };
     } catch (e) {
-      console.warn('[Gemini Service] JSON parse failed, returning robust structure:', e.message);
+      console.warn('[Gemini Service] JSON parse warning:', e.message);
     }
   }
 
@@ -256,15 +225,21 @@ Return a comprehensive JSON assessment strictly conforming to this structure:
 }
 
 /**
- * Interactive Assessor Copilot.
+ * Interactive Assessor Copilot Assistant (Standards & IS / BIS lookup)
  */
 async function chatCopilot({ message, assessmentContext, trade }) {
-  const systemInstruction = `You are Kaushal AI Assessor Assistant, an expert AI Co-Pilot for certified vocational assessors under the National Skills Qualification Framework (NSQF), MSDE, and NCVET. Answer concisely, professionally, and authoritatively.`;
+  const systemInstruction = `You are Kaushal AI Assessor Assistant, an expert AI Co-Pilot for certified vocational assessors under the National Skills Qualification Framework (NSQF), MSDE, and NCVET. Always provide objective, standards-cited responses. If uncertain or if evidence is not provided, advise the assessor to conduct a direct practical demonstration.`;
 
   const contextStr = assessmentContext ? JSON.stringify(assessmentContext) : 'None';
   const tradeStr = trade ? (trade.trade || trade.title) : 'General Vocational Trade';
 
-  const prompt = `Trade: ${tradeStr}\nAssessment Context: ${contextStr}\n\nAssessor Question:\n"${message}"\n\nProvide clear, actionable, and standards-compliant guidance:`;
+  const prompt = `Trade Context: ${tradeStr}
+Assessment Context: ${contextStr}
+
+Assessor Question:
+"${message}"
+
+Provide a professional, standards-compliant response citing relevant NSQF codes or Indian Standards (IS) where applicable:`;
 
   const reply = await callGemini({
     contents: [{ parts: [{ text: prompt }] }],
@@ -272,7 +247,7 @@ async function chatCopilot({ message, assessmentContext, trade }) {
     jsonMode: false
   });
 
-  return reply || "Candidate assessment data has been verified against NSQF Level benchmarks. Standard PPE and procedural criteria are satisfied.";
+  return reply || "Unable to consult Gemini AI at this moment. Please reference the official Qualification Pack standards document for this trade.";
 }
 
 module.exports = {

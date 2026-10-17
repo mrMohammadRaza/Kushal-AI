@@ -5,16 +5,15 @@ import urllib.request
 import urllib.error
 from typing import Dict, Any, Optional
 
-BHASHINI_USER_ID = os.getenv("BHASHINI_USER_ID", "gov_skill_india_rpl_test")
-BHASHINI_API_KEY = os.getenv("BHASHINI_API_KEY", "bhashini_sih26242_key")
+BHASHINI_USER_ID = os.getenv("BHASHINI_USER_ID", "")
+BHASHINI_API_KEY = os.getenv("BHASHINI_API_KEY", "")
 BHASHINI_INFERENCE_URL = os.getenv(
     "BHASHINI_INFERENCE_URL", 
     "https://dhruva-api.bhashini.gov.in/services/inference/pipeline"
 )
 
-# Indic vocabulary and dialect dictionary for technical RPL terms
+# Indic vocabulary glossary for basic vocational terms
 INDIC_VOCAB_GLOSSARY = {
-    # Hindi / Marathi common electrical terms
     "आइसोलेटर": "isolator",
     "अर्थिंग": "earthing / ground",
     "वायरिंग": "wiring",
@@ -36,8 +35,8 @@ INDIC_VOCAB_GLOSSARY = {
 class BhashiniTranslationService:
     """
     Digital India Bhashini ULCA API Integration Service.
-    Transcribes regional Indic audio (Hindi, Marathi, Bengali, Tamil, etc.)
-    and executes Neural Machine Translation (NMT) into English.
+    Integrates genuine ASR and NMT pipelines when configured.
+    Does NOT fabricate translations when offline.
     """
 
     def __init__(self):
@@ -45,27 +44,54 @@ class BhashiniTranslationService:
         self.api_key = BHASHINI_API_KEY
         self.inference_url = BHASHINI_INFERENCE_URL
 
+    @property
+    def is_configured(self) -> bool:
+        return bool(self.api_key and "sih26242" not in self.api_key and len(self.api_key) > 10)
+
     def process_speech_and_translation(
         self, 
         raw_text_or_audio: str, 
         source_language: str = "hi"
     ) -> Dict[str, Any]:
         """
-        Executes Bhashini pipeline: ASR (Audio to Regional Text) -> NMT (Regional Text to English)
+        Executes Bhashini pipeline or returns honest normalization.
         """
         cleaned_text = (raw_text_or_audio or "").strip()
-        
+        if not cleaned_text:
+            return {
+                "sourceText": "",
+                "sourceLanguage": "none",
+                "englishTranslation": "",
+                "service": "Bhashini ULCA (No Input Provided)",
+                "liveProviderConnected": self.is_configured,
+                "confidence": 0.0
+            }
+
         # Check if live Bhashini API credentials configured
-        if self.api_key and "sih26242" not in self.api_key:
+        if self.is_configured:
             try:
                 bhashini_result = self._call_bhashini_api(cleaned_text, source_language)
                 if bhashini_result:
                     return bhashini_result
             except Exception as e:
-                print(f"[Bhashini API] Connection error ({str(e)}). Engaging resilient Indic NMT fallback engine.")
+                print(f"[Bhashini API] Connection error ({str(e)}). Returning honest offline state.")
 
-        # High-Fidelity Indic Neural Machine Translation Fallback Engine
-        return self._fallback_indic_translate(cleaned_text, source_language)
+        # Honest glossary substitution without hallucinating sentences
+        translated_text = cleaned_text
+        has_devanagari = bool(re.search(r'[\u0900-\u097F]', cleaned_text))
+        
+        for hindi_term, eng_term in INDIC_VOCAB_GLOSSARY.items():
+            if hindi_term in translated_text:
+                translated_text = translated_text.replace(hindi_term, f"[{eng_term}]")
+
+        return {
+            "sourceText": cleaned_text,
+            "sourceLanguage": "hi" if has_devanagari else "en-IN / hi-Latn",
+            "englishTranslation": translated_text,
+            "service": "Bhashini Interface (Offline Fallback - Vocabulary Aligned)",
+            "liveProviderConnected": False,
+            "confidence": 0.70 if has_devanagari else 0.85
+        }
 
     def _call_bhashini_api(self, text: str, source_lang: str) -> Optional[Dict[str, Any]]:
         headers = {
@@ -107,56 +133,9 @@ class BhashiniTranslationService:
                     "sourceLanguage": source_lang,
                     "englishTranslation": translated_text or text,
                     "service": "Bhashini ULCA NMT (Dhruva)",
-                    "confidence": 0.96
+                    "liveProviderConnected": True,
+                    "confidence": 0.95
                 }
         return None
-
-    def _fallback_indic_translate(self, text: str, source_lang: str) -> Dict[str, Any]:
-        """
-        Translates Hindi / Hinglish / Marathi technical vernacular into precise English NSQF terminology.
-        """
-        if not text:
-            return {
-                "sourceText": "",
-                "sourceLanguage": source_lang,
-                "englishTranslation": "Candidate provided standard oral demonstration of safety protocol and isolation.",
-                "service": "Bhashini High-Fidelity Indic Engine",
-                "confidence": 0.95
-            }
-
-        # Handle transliterated Hinglish or Devanagari Hindi
-        english_translation = text
-
-        # Standard translations for our realistic RPL candidate scenarios
-        if "3-फेज" in text or "3-phase" in text.lower() or "आइसोलेटर" in text or "isolator" in text.lower():
-            english_translation = (
-                "First isolated the 3-phase main distribution switch and applied safety lockout. "
-                "Verified phase sequence R-Y-B using phase rotation meter and torqued busbar terminal bolts. "
-                "Measured AC motor winding insulation resistance with 1000V Megger (yielding 50 Megohms) and verified earth pit resistance at 1.8 Ohms."
-            )
-        elif "इंजन" in text or "oil" in text.lower() or "brake" in text.lower():
-            english_translation = (
-                "Conducted engine oil replacement and installed new brake pads. Inspected hydraulic lines and tightened bleeder valve to specification."
-            )
-        elif "p-trap" in text.lower() or "पाइप" in text or "लीकेज" in text:
-            english_translation = (
-                "Installed anti-siphon deep seal P-trap in drainage line and completed solvent weld pipe joint pressure test."
-            )
-        elif "कुर्ती" in text or "सिलाई" in text or "stitching" in text.lower():
-            english_translation = (
-                "Drafted pattern measurements, executed interlocking edge stitching on sewing machine, and completed neckline piping finish."
-            )
-        else:
-            # Word-by-word substitution from Indian technical dictionary
-            for hindi_term, eng_term in INDIC_VOCAB_GLOSSARY.items():
-                english_translation = english_translation.replace(hindi_term, eng_term)
-
-        return {
-            "sourceText": text,
-            "sourceLanguage": "hi" if re.search(r'[\u0900-\u097F]', text) else "hi-Latn",
-            "englishTranslation": english_translation,
-            "service": "Bhashini Government AI Indic Language Engine",
-            "confidence": 0.95
-        }
 
 bhashini_service = BhashiniTranslationService()

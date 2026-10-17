@@ -24,7 +24,16 @@ env/
 # Environment variables
 .env
 .env.local
+.env.*
 */.env
+*/.env.*
+
+# Databases & local sqlite
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+backend/data/*.db*
 
 # Uploads & temporary media
 backend/uploads/*

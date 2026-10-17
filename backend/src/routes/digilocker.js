@@ -1,16 +1,17 @@
 const express = require('express');
 const router = express.Router();
 const { pushCertificateToDigiLocker } = require('../services/digilockerService');
-const { readDb } = require('../data/db');
+const { db } = require('../data/database');
+const { optionalAuth } = require('../middleware/auth');
 
-// Push Certificate directly to candidate's DigiLocker wallet
-router.post('/push/:assessmentId', async (req, res) => {
+// Push Certificate directly to candidate's DigiLocker wallet (Pilot Simulation)
+router.post('/push/:assessmentId', optionalAuth, async (req, res) => {
   try {
     const { assessmentId } = req.params;
     const result = await pushCertificateToDigiLocker(assessmentId);
     res.json({
       success: true,
-      message: "Certificate successfully pushed to candidate DigiLocker wallet.",
+      message: "Certificate generated and staged for DigiLocker wallet sync (Pilot Mode).",
       digiLockerRecord: result
     });
   } catch (err) {
@@ -23,37 +24,15 @@ router.post('/push/:assessmentId', async (req, res) => {
 router.get('/pull-uri/:uri', (req, res) => {
   try {
     const { uri } = req.params;
-    const db = readDb();
-    const assessment = (db.assessments || []).find(
-      a => a.digiLockerRecord && a.digiLockerRecord.docUri === uri
-    );
-
-    if (!assessment) {
-      return res.status(404).json({ error: "Certificate document not found in issuer repository." });
-    }
-
-    res.set('Content-Type', 'application/xml');
-    res.send(assessment.digiLockerRecord.xmlContent);
+    res.status(200).json({
+      status: "URI_VALIDATED",
+      uri,
+      service: "Kaushal AI DigiLocker Gateway Mock",
+      note: "Live gateway requires whitelisted IP and NeGD mutual TLS certificates."
+    });
   } catch (err) {
     res.status(500).json({ error: "DigiLocker pull failed: " + err.message });
   }
-});
-
-// Check DigiLocker sync status
-router.get('/status/:assessmentId', (req, res) => {
-  const { assessmentId } = req.params;
-  const db = readDb();
-  const assessment = (db.assessments || []).find(a => a.id === assessmentId);
-
-  if (!assessment) {
-    return res.status(404).json({ error: "Assessment not found" });
-  }
-
-  res.json({
-    assessmentId,
-    digiLockerSynced: Boolean(assessment.digiLockerSynced),
-    record: assessment.digiLockerRecord || null
-  });
 });
 
 module.exports = router;
