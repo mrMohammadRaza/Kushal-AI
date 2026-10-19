@@ -27,6 +27,25 @@ export const translations = {
     btnSubmitting: "Analyzing with AI...",
     successToast: "Evidence submitted successfully!",
     trades: {
+      webDeveloper: {
+        id: "web-developer-l5",
+        title: "Web Developer",
+        roleHindi: "वेब डेवलपर",
+        level: "NSQF Level 5 (SSC/Q0501)",
+        desc: "Responsive web apps, interactive JavaScript state, semantic accessible HTML, and unit-tested components",
+        color: "teal",
+        qpCode: "SSC/Q0501",
+        nosList: [
+          "SSC/N0501: HTML and accessibility (15%)",
+          "SSC/N0502: CSS and responsive design (15%)",
+          "SSC/N0503: JavaScript fundamentals (20%)",
+          "SSC/N0504: Practical development (30%)",
+          "SSC/N0505: Debugging and problem-solving (15%)",
+          "SSC/N0506: Technical explanation (5%)"
+        ],
+        sampleEvidence: "https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=800&auto=format&fit=crop&q=80",
+        voicePrompt: "Built a responsive task list component with semantic buttons, accessibility focus management, state filters, and unit test coverage."
+      },
       electrician: {
         id: "electrician",
         title: "Electrician",
@@ -103,6 +122,25 @@ export const translations = {
     btnSubmitting: "AI द्वारा जांच जारी है...",
     successToast: "सबूत सफलतापूर्वक जमा कर दिया गया!",
     trades: {
+      webDeveloper: {
+        id: "web-developer-l5",
+        title: "वेब डेवलपर",
+        roleHindi: "सॉफ़्टवेयर / वेब डेवलपर",
+        level: "NSQF स्तर 5 (SSC/Q0501)",
+        desc: "रिस्पॉन्सिव वेब ऍप्लिकेशन्स, जावास्क्रिप्ट स्टेट मैनेजमेंट, एक्सेसिबल HTML, और यूनिट टेस्टेड कोडिंग कार्य",
+        color: "teal",
+        qpCode: "SSC/Q0501",
+        nosList: [
+          "SSC/N0501: HTML व सुलभता (Accessibility) (15%)",
+          "SSC/N0502: CSS व रिस्पॉन्सिव लेआउट (15%)",
+          "SSC/N0503: जावास्क्रिप्ट सिद्धांत व स्टेट (20%)",
+          "SSC/N0504: प्रायोगिक एप्लिकेशन निर्माण (30%)",
+          "SSC/N0505: डिबगिंग व समस्या समाधान (15%)",
+          "SSC/N0506: तकनीकी व्याख्या व वास्तुकला (5%)"
+        ],
+        sampleEvidence: "https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=800&auto=format&fit=crop&q=80",
+        voicePrompt: "मैंने टास्क लिस्ट ऍप्लिकेशन का कोड बनाया जिसमें रिस्पॉन्सिव फ्लेक्सबॉक्स, इनपुट वैलिडेशन और यूनिट टेस्ट पास हुए।"
+      },
       electrician: {
         id: "electrician",
         title: "इलेक्ट्रीशियन",

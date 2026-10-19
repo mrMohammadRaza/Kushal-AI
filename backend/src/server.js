@@ -13,6 +13,7 @@ const tradesRoute = require('./routes/trades');
 const assessmentsRoute = require('./routes/assessments');
 const reportsRoute = require('./routes/reports');
 const digilockerRoute = require('./routes/digilocker');
+const assessmentTemplatesRoute = require('./routes/assessmentTemplates');
 const { chatCopilot } = require('./services/geminiService');
 
 const app = express();
@@ -124,6 +125,7 @@ app.use('/api/auth', authRoute);
 app.use('/api/candidates', candidatesRoute);
 app.use('/api/trades', tradesRoute);
 app.use('/api/assessments', assessmentsRoute);
+app.use('/api/assessment-templates', assessmentTemplatesRoute);
 app.use('/api/reports', reportsRoute);
 app.use('/api/digilocker', digilockerRoute);
 

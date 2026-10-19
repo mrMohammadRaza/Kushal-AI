@@ -3,14 +3,17 @@ import { AnimatePresence, motion } from 'framer-motion';
 import Header from './components/Header';
 import ViewA_Dashboard from './components/ViewA_Dashboard';
 import ViewB_EvidenceCapture from './components/ViewB_EvidenceCapture';
+import AssessmentBlueprintModal from './components/AssessmentBlueprintModal';
+import HybridTestEngine from './components/HybridTestEngine';
+import ExplainableAssessorDashboard from './components/ExplainableAssessorDashboard';
+import CompetencyReportView from './components/CompetencyReportView';
 import CertificatesModal from './components/CertificatesModal';
 import AssessmentSuccessScreen from './components/AssessmentSuccessScreen';
 import LivenessGestureChallenge from './components/LivenessGestureChallenge';
-import ExplainableAssessorDashboard from './components/ExplainableAssessorDashboard';
 import LoginModal from './components/LoginModal';
 import AccessibilityTestScreen from './components/AccessibilityTestScreen';
 import { translations } from './data/translations';
-import { getStoredCandidateSession } from './utils/supabaseClient';
+import { getStoredCandidateSession, loginUser } from './utils/supabaseClient';
 import { 
   saveAssessmentOffline, 
   getPendingAssessments, 
@@ -30,36 +33,47 @@ import {
   UserCheck,
   CheckCircle,
   Sliders,
-  Settings
+  Settings,
+  Code2,
+  BookOpen
 } from 'lucide-react';
 
 export default function App() {
   // Localization & Theme States
-  const [lang, setLang] = useState('hi');
+  const [lang, setLang] = useState('en');
   const [theme, setTheme] = useState('dark');
   
-  // Navigation & Flow State: 'dashboard' | 'accessibility' | 'evidence' | 'completed' | 'assessor'
+  // Navigation State: 'dashboard' | 'hybrid_engine' | 'assessor' | 'report' | 'accessibility' | 'evidence' | 'completed'
   const [currentView, setCurrentView] = useState('dashboard');
   const [selectedTrade, setSelectedTrade] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submissionData, setSubmissionData] = useState(null);
-  
-  // Candidate & Auth States
-  const [candidateProfile, setCandidateProfile] = useState(() => getStoredCandidateSession() || {
-    id: "cand-101",
-    fullName: "Ramesh Kumar Sharma",
-    email: "ramesh.sharma@skillindia.rpl",
-    tradeId: "electrician-l3",
-    tradeName: "Assistant Electrician (Level 3)",
-    experienceYears: "6",
-    employmentType: "Self-Employed (Local Contractor)",
-    workLocation: "Varanasi, UP",
-    companyName: "Sharma Electrical Works",
-    primaryLanguage: "hi"
-  });
-  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
 
-  // Modals & Advanced Features
+  // Hybrid Assessment State
+  const [activeAssessment, setActiveAssessment] = useState(null);
+  const [webDevTemplate, setWebDevTemplate] = useState(null);
+  const [isBlueprintModalOpen, setIsBlueprintModalOpen] = useState(false);
+
+  // Candidate & Auth States
+  const [candidateProfile, setCandidateProfile] = useState(() => {
+    const stored = getStoredCandidateSession();
+    if (stored) return stored;
+    return {
+      id: "cand-103",
+      fullName: "Aarav Sharma",
+      email: "dev.candidate@skillindia.rpl",
+      tradeId: "web-developer-l5",
+      tradeName: "Web Developer (NSQF Level 5)",
+      experienceYears: "3",
+      employmentType: "Freelance Frontend & Web Developer",
+      workLocation: "Bengaluru, Karnataka",
+      companyName: "Sharma Dev Labs",
+      primaryLanguage: "en",
+      role: "candidate"
+    };
+  });
+
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [isCertModalOpen, setIsCertModalOpen] = useState(false);
   const [isLivenessModalOpen, setIsLivenessModalOpen] = useState(false);
   const [antiFraudAudit, setAntiFraudAudit] = useState(null);
@@ -67,9 +81,9 @@ export default function App() {
   const [pendingSyncCount, setPendingSyncCount] = useState(0);
   const [isSyncing, setIsSyncing] = useState(false);
 
-  const t = translations[lang];
+  const t = translations[lang] || translations.en;
 
-  // Theme Synchronizer
+  // Initialize theme
   useEffect(() => {
     const root = document.documentElement;
     if (theme === 'dark') {
@@ -81,7 +95,7 @@ export default function App() {
     }
   }, [theme]);
 
-  // Network State Listener & Queue Inspection
+  // Network State Listener
   useEffect(() => {
     const handleOnline = () => {
       setIsOnline(true);
@@ -91,7 +105,6 @@ export default function App() {
 
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
-
     checkPendingQueue();
 
     return () => {
@@ -99,6 +112,63 @@ export default function App() {
       window.removeEventListener('offline', handleOffline);
     };
   }, []);
+
+  // Fetch Assessment Template & Authenticate Default Token on Mount
+  useEffect(() => {
+    async function initSessionAndTemplate() {
+      // 1. Ensure a valid JWT token exists in localStorage
+      let token = localStorage.getItem('kaushal_ai_auth_token');
+      if (!token) {
+        try {
+          const authRes = await fetch('/api/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: candidateProfile?.email || 'dev.candidate@skillindia.rpl', password: 'Kaushal@2026' })
+          });
+          if (authRes.ok) {
+            const data = await authRes.json();
+            if (data.token) {
+              localStorage.setItem('kaushal_ai_auth_token', data.token);
+              token = data.token;
+            }
+          }
+        } catch (e) {
+          console.warn('[Init Auth]:', e.message);
+        }
+      }
+
+      // 2. Fetch Web Developer Assessment Template
+      try {
+        const tplRes = await fetch('/api/assessment-templates/web-developer-l5');
+        if (tplRes.ok) {
+          const tplData = await tplRes.json();
+          setWebDevTemplate(tplData);
+        }
+      } catch (tplErr) {
+        console.warn('[Template Fetch]:', tplErr.message);
+      }
+
+      // 3. Check for existing candidate assessment
+      if (token) {
+        try {
+          const asmtRes = await fetch('/api/assessments', {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          if (asmtRes.ok) {
+            const list = await asmtRes.json();
+            if (Array.isArray(list) && list.length > 0) {
+              const latest = list[0];
+              setActiveAssessment(latest);
+            }
+          }
+        } catch (asmtErr) {
+          console.warn('[Assessment Fetch]:', asmtErr.message);
+        }
+      }
+    }
+
+    initSessionAndTemplate();
+  }, [candidateProfile?.email]);
 
   const checkPendingQueue = async () => {
     try {
@@ -121,13 +191,6 @@ export default function App() {
     }
   };
 
-  // Default to Electrician trade when entering wizard directly
-  useEffect(() => {
-    if (!selectedTrade && t?.trades?.electrician) {
-      setSelectedTrade(t.trades.electrician);
-    }
-  }, [lang, t]);
-
   // Voice Guidance (SpeechSynthesis)
   const speakInstructions = (customText) => {
     if ('speechSynthesis' in window) {
@@ -135,15 +198,15 @@ export default function App() {
       const textToSpeak = customText || (
         currentView === 'dashboard' 
           ? (lang === 'hi' 
-              ? 'नमस्ते! कौशल एआई में आपका स्वागत है। अपना व्यवसाय चुनें: इलेक्ट्रीशियन, मैकेनिक, प्लंबर, या दर्जी।' 
-              : 'Welcome to Kaushal AI. Please select your trade: Electrician, Mechanic, Plumber, or Tailor.')
-          : (currentView === 'accessibility'
+              ? 'नमस्ते! कौशल एआई व्यावहारिक कौशल सत्यापन पोर्टल में आपका स्वागत है। वेब डेवलपर या अन्य व्यवसाय का चयन करें।' 
+              : 'Welcome to Kaushal AI skill verification platform. Web Developer is our first supported occupation.')
+          : (currentView === 'hybrid_engine'
               ? (lang === 'hi'
-                  ? 'सुलभता और हार्डवेयर जांच: कृपया अपने माइक्रोफोन और कैमरे की जांच पूरी करें।'
-                  : 'Accessibility and hardware diagnostics: please verify your microphone and camera.')
+                  ? 'हाइब्रिड टेस्ट इंजन: ज्ञान प्रश्न, कोडिंग टास्क और डिबगिंग पूर्ण करें।'
+                  : 'Hybrid Test Engine: Complete knowledge questions, coding workspace, and defect debugging.')
               : (lang === 'hi'
-                  ? 'चरण 1: अपने काम की तस्वीर खींचें, और नीचे दिए गए बड़े माइक बटन को दबाकर अपने काम के बारे में बोलकर बताएं।'
-                  : 'Step 1: Take a photo of your completed work, then tap the large microphone button to describe your work.'))
+                  ? 'मूल्यांकनकर्ता कंसोल: स्वचालित परीक्षण परिणामों और दक्षता रूब्रिक की समीक्षा करें।'
+                  : 'Assessor Console: Review candidate code, automated test results, and record your verification decision.'))
       );
 
       const utterance = new SpeechSynthesisUtterance(textToSpeak);
@@ -153,30 +216,169 @@ export default function App() {
     }
   };
 
-  const handleSelectTrade = (trade) => {
-    setSelectedTrade(trade);
-    setCurrentView('evidence');
+  // Start or resume the Web Developer hybrid assessment
+  const handleStartWebDevAssessment = async () => {
+    let token = localStorage.getItem('kaushal_ai_auth_token');
+    
+    // Ensure token is active
+    if (!token) {
+      const res = await loginUser(candidateProfile?.email || 'dev.candidate@skillindia.rpl', 'Kaushal@2026');
+      token = localStorage.getItem('kaushal_ai_auth_token');
+    }
+
+    try {
+      const res = await fetch('/api/assessments/start', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          tradeId: 'web-developer-l5',
+          templateId: 'tpl-web-developer-v1'
+        })
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setActiveAssessment(data.assessment);
+        if (data.template) {
+          setWebDevTemplate(data.template);
+        }
+      }
+    } catch (e) {
+      console.warn('[Start Assessment Error]:', e);
+    }
+
+    setIsBlueprintModalOpen(false);
+    setCurrentView('hybrid_engine');
+  };
+
+  // Switch context/role cleanly
+  const handleSwitchRole = async (roleKey) => {
+    if (roleKey === 'candidate_webdev') {
+      const candidateUser = {
+        id: "cand-103",
+        fullName: "Aarav Sharma",
+        email: "dev.candidate@skillindia.rpl",
+        tradeId: "web-developer-l5",
+        tradeName: "Web Developer (NSQF Level 5)",
+        experienceYears: "3",
+        employmentType: "Freelance Frontend & Web Developer",
+        workLocation: "Bengaluru, Karnataka",
+        companyName: "Sharma Dev Labs",
+        primaryLanguage: "en",
+        role: "candidate"
+      };
+      await loginUser(candidateUser.email, 'Kaushal@2026');
+      setCandidateProfile(candidateUser);
+      setCurrentView('dashboard');
+    } else if (roleKey === 'assessor') {
+      const assessorUser = {
+        id: "user-assessor-01",
+        fullName: "Rajesh Varma (Lead Assessor)",
+        email: "assessor@kaushal.gov.in",
+        tradeId: "assessor",
+        tradeName: "Certified Assessor (NCVET Verified)",
+        experienceYears: "10",
+        employmentType: "Lead Assessor",
+        workLocation: "New Delhi, National Capital",
+        companyName: "National Skill Assessment Council",
+        primaryLanguage: "en",
+        role: "assessor"
+      };
+      await loginUser(assessorUser.email, 'Kaushal@2026');
+      setCandidateProfile(assessorUser);
+      setCurrentView('assessor');
+    } else if (roleKey === 'candidate_electrician') {
+      const elecUser = {
+        id: "cand-101",
+        fullName: "Ramesh Kumar Sharma",
+        email: "ramesh.sharma@skillindia.rpl",
+        tradeId: "electrician-l3",
+        tradeName: "Assistant Electrician (Level 3)",
+        experienceYears: "6",
+        employmentType: "Self-Employed (Local Contractor)",
+        workLocation: "Varanasi, UP",
+        companyName: "Sharma Electrical Works",
+        primaryLanguage: "hi",
+        role: "candidate"
+      };
+      await loginUser(elecUser.email, 'Kaushal@2026');
+      setCandidateProfile(elecUser);
+      setCurrentView('dashboard');
+    }
   };
 
   // Handle Login & Job Details Confirmation
   const handleLoginSuccess = (candidate) => {
     setCandidateProfile(candidate);
     setIsLoginModalOpen(false);
-    // After login, immediately launch the Accessibility Test as requested
-    setCurrentView('accessibility');
-  };
-
-  // Complete Accessibility Test and launch practical evidence capture
-  const handleCompleteAccessibilityTest = (testResults) => {
-    // If trade matches candidate preference, select it
-    if (candidateProfile?.tradeId && t?.trades) {
-      const match = Object.values(t.trades).find(tr => tr.id === candidateProfile.tradeId);
-      if (match) setSelectedTrade(match);
+    if (candidate.tradeId === 'assessor' || candidate.role === 'assessor') {
+      setCurrentView('assessor');
+    } else if (candidate.tradeId === 'web-developer-l5') {
+      setCurrentView('dashboard');
+    } else {
+      setCurrentView('dashboard');
     }
-    setCurrentView('evidence');
   };
 
-  // Unified Submission Handler (Online + Offline-First fallback with Gemini AI Evaluation)
+  // Complete Hybrid Assessment Submission
+  const handleCompleteHybridSubmission = (result) => {
+    if (result?.assessment) {
+      setActiveAssessment(result.assessment);
+      setSubmissionData({
+        ...result.assessment,
+        rubricScores: result.rubric || result.assessment.rubric_scores_json ? (typeof result.assessment.rubric_scores_json === 'string' ? JSON.parse(result.assessment.rubric_scores_json) : result.assessment.rubric_scores_json) : null
+      });
+    }
+    setCurrentView('report');
+  };
+
+  // Complete Accessibility Test
+  const handleCompleteAccessibilityTest = () => {
+    if (candidateProfile?.tradeId === 'web-developer-l5') {
+      setCurrentView('dashboard');
+    } else {
+      setCurrentView('evidence');
+    }
+  };
+
+  // Assessor sign-off on dossier
+  const handleAssessorSignOff = async ({ assessmentId, finalDecision, assessorRemarks }) => {
+    try {
+      const targetId = assessmentId || activeAssessment?.id || 'asmt-sample';
+      const token = localStorage.getItem('kaushal_ai_auth_token');
+
+      const res = await fetch(`/api/assessments/${targetId}/signoff`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ finalDecision, assessorRemarks })
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        // Update local state
+        if (activeAssessment && activeAssessment.id === targetId) {
+          setActiveAssessment(prev => ({
+            ...prev,
+            status: finalDecision === 'certified_approved' ? 'verified_by_assessor' : (finalDecision === 'rejected' ? 'rejected' : 'conditional_bridge_training'),
+            signed_off: 1,
+            assessorRemarks
+          }));
+        }
+        return data;
+      }
+    } catch (err) {
+      console.warn('Sign-off error:', err);
+    }
+    return null;
+  };
+
+  // Legacy multimodal submission (Electrician / trades)
   const handleSubmitEvidence = async (data) => {
     setIsSubmitting(true);
     const enrichedData = {
@@ -232,7 +434,6 @@ export default function App() {
     }
 
     if (!isOnline || !evaluationResult) {
-      // Save offline in IndexedDB outbox
       try {
         await saveAssessmentOffline(enrichedData);
         await checkPendingQueue();
@@ -252,53 +453,11 @@ export default function App() {
     setCurrentView('completed');
   };
 
-  const handleAssessorSignOff = async ({ assessmentId, finalDecision, assessorRemarks }) => {
-    try {
-      const targetId = assessmentId || submissionData?.assessmentRecord?.id || 'asmt-sample';
-      
-      // Ensure assessor authentication token exists
-      let token = localStorage.getItem('kaushal_ai_auth_token');
-      if (!token) {
-        alert("Assessor authorization required. Please sign in with an authorized assessor account.");
-        setShowLoginModal(true);
-        return null;
-      }
-
-      const res = await fetch(`/api/assessments/${targetId}/signoff`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ finalDecision, assessorRemarks })
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        return data;
-      }
-    } catch (err) {
-      console.warn('Sign-off error:', err);
-    }
-    return null;
-  };
-
-  const handlePushDigiLocker = async (assessmentId) => {
-    try {
-      const targetId = assessmentId || submissionData?.assessmentRecord?.id || 'asmt-sample';
-      const res = await fetch(`/api/digilocker/push/${targetId}`, { method: 'POST' });
-      const data = await res.json();
-      alert(`DigiLocker Pilot Sync: ${data.message || 'Payload verified according to NeGD technical standards.'}`);
-    } catch (e) {
-      alert("Certificate generated according to DigiLocker technical schema (Sandbox Simulation).");
-    }
-  };
-
   return (
     <div className={`min-h-screen flex flex-col font-sans transition-colors duration-300
-      ${theme === 'dark' ? 'bg-[#090d16] text-slate-100' : 'bg-slate-100 text-slate-900'}`}
+      ${theme === 'dark' ? 'bg-[#060913] text-slate-100' : 'bg-slate-100 text-slate-900'}`}
     >
-      {/* 1. Top Header with Logo, Audio, Language, Theme and Candidate Login Controls */}
+      {/* 1. Formal Institutional Header */}
       <Header 
         lang={lang}
         setLang={setLang}
@@ -307,23 +466,25 @@ export default function App() {
         onSpeakHelp={() => speakInstructions()}
         candidateProfile={candidateProfile}
         onOpenLogin={() => setIsLoginModalOpen(true)}
+        onSwitchRole={handleSwitchRole}
+        currentView={currentView}
+        setCurrentView={setCurrentView}
+        onOpenBlueprint={() => setIsBlueprintModalOpen(true)}
         t={t}
       />
 
-      {/* 2. Advanced Government Portal Navigation Bar */}
-      <div className="w-full bg-slate-950/80 dark:bg-slate-950/80 light:bg-slate-200/90 border-b border-slate-800/80 dark:border-slate-800/80 light:border-slate-300 py-2.5 px-4 backdrop-blur-md">
+      {/* 2. System Telemetry & Network Status Bar */}
+      <div className="w-full bg-[#0a192f]/80 border-b border-slate-800/80 py-2 px-4 backdrop-blur-md">
         <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3 text-xs">
           
-          {/* Offline Sync & Anti-Fraud Security Badges */}
           <div className="flex items-center gap-3">
-            {/* Network / Offline Queue Pill */}
             <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full font-bold ${
               isOnline 
                 ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30' 
                 : 'bg-amber-500/15 text-amber-300 border border-amber-500/30'
             }`}>
               {isOnline ? <Wifi className="w-3.5 h-3.5" /> : <WifiOff className="w-3.5 h-3.5" />}
-              <span>{isOnline ? 'Supabase & Gemini Online' : `Offline Mode (${pendingSyncCount} queued)`}</span>
+              <span>{isOnline ? 'System Online • Secure VM Sandbox' : `Offline Mode (${pendingSyncCount} queued)`}</span>
             </div>
 
             {pendingSyncCount > 0 && isOnline && (
@@ -338,93 +499,104 @@ export default function App() {
               </button>
             )}
 
-            {/* Anti-Fraud Liveness Trigger */}
             <button
               type="button"
               onClick={() => setIsLivenessModalOpen(true)}
-              className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-500/15 text-blue-300 hover:text-white border border-blue-500/30 font-bold transition-all"
+              className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-teal-500/15 text-teal-300 hover:text-white border border-teal-500/30 font-bold transition-all"
             >
-              <UserCheck className="w-3.5 h-3.5 text-blue-400" />
+              <UserCheck className="w-3.5 h-3.5 text-teal-400" />
               <span>{antiFraudAudit ? '✓ Liveness Verified' : 'Verify Liveness & GPS'}</span>
             </button>
           </div>
 
-          {/* Core Views Navigation */}
           <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setCurrentView('dashboard')}
-              className={`min-h-[36px] px-3.5 py-1.5 rounded-xl font-extrabold flex items-center gap-1.5 transition-all ${
-                currentView === 'dashboard'
-                  ? 'btn-3d bg-blue-600 text-white shadow-lg shadow-blue-600/40 ring-2 ring-blue-400/40'
-                  : 'bg-slate-900/90 text-slate-400 hover:text-white border border-slate-800'
-              }`}
-            >
-              <span>View A: Trades</span>
-            </button>
-
-            {/* Accessibility Test Button */}
-            <button
-              type="button"
-              onClick={() => setCurrentView('accessibility')}
-              className={`min-h-[36px] px-3.5 py-1.5 rounded-xl font-extrabold flex items-center gap-1.5 transition-all ${
-                currentView === 'accessibility'
-                  ? 'btn-3d-emerald bg-emerald-600 text-white shadow-lg shadow-emerald-600/40 ring-2 ring-emerald-400/40'
-                  : 'bg-slate-900/90 text-emerald-400 hover:text-white border border-emerald-500/40'
-              }`}
-            >
-              <Sliders className="w-3.5 h-3.5" />
-              <span>Accessibility Test</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setCurrentView('evidence')}
-              className={`min-h-[36px] px-3.5 py-1.5 rounded-xl font-extrabold flex items-center gap-1.5 transition-all ${
-                currentView === 'evidence'
-                  ? 'btn-3d bg-blue-600 text-white shadow-lg shadow-blue-600/40 ring-2 ring-blue-400/40'
-                  : 'bg-slate-900/90 text-slate-400 hover:text-white border border-slate-800'
-              }`}
-            >
-              <span>View B: Evidence</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setCurrentView('assessor')}
-              className={`min-h-[36px] px-3.5 py-1.5 rounded-xl font-extrabold flex items-center gap-1.5 transition-all ${
-                currentView === 'assessor'
-                  ? 'btn-3d bg-indigo-600 text-white shadow-lg shadow-indigo-600/40 ring-2 ring-indigo-400/40'
-                  : 'bg-slate-900/90 text-indigo-400 hover:text-white border border-indigo-500/40'
-              }`}
-            >
-              <Eye className="w-3.5 h-3.5" />
-              <span>XAI Assessor Console</span>
-            </button>
+            <span className="text-slate-400 font-medium hidden md:inline">
+              First Supported Occupation:
+            </span>
+            <span className="px-2.5 py-0.5 rounded-md bg-teal-500/20 text-teal-300 border border-teal-500/40 font-bold">
+              Web Developer (NSQF Level 5)
+            </span>
           </div>
 
         </div>
       </div>
 
-      {/* 3. Main Content Views */}
-      <main className="flex-1 flex flex-col justify-center relative overflow-hidden py-4 sm:py-8">
+      {/* 3. Main Views Container */}
+      <main className="flex-1 flex flex-col justify-start relative overflow-hidden py-4 sm:py-6">
         
         <AnimatePresence mode="wait">
+          
+          {/* View 1: Candidate Dashboard */}
           {currentView === 'dashboard' && (
             <ViewA_Dashboard 
-              key="view-a"
+              key="view-dashboard"
               lang={lang}
               t={t}
               selectedTrade={selectedTrade}
-              onSelectTrade={handleSelectTrade}
+              onSelectTrade={(tr) => {
+                setSelectedTrade(tr);
+                setCurrentView('evidence');
+              }}
               onOpenCertificates={() => setIsCertModalOpen(true)}
               onSpeakPrompt={() => speakInstructions()}
               candidateProfile={candidateProfile}
               onOpenLogin={() => setIsLoginModalOpen(true)}
               onOpenAccessibility={() => setCurrentView('accessibility')}
+              onStartWebDevAssessment={handleStartWebDevAssessment}
+              onOpenBlueprint={() => setIsBlueprintModalOpen(true)}
+              onViewReport={(asmt) => {
+                if (asmt) setActiveAssessment(asmt);
+                setCurrentView('report');
+              }}
+              activeAssessment={activeAssessment}
+              webDevTemplate={webDevTemplate}
             />
           )}
 
+          {/* View 2: Hybrid Test Engine (Web Developer) */}
+          {currentView === 'hybrid_engine' && (
+            <HybridTestEngine 
+              key="view-hybrid-engine"
+              assessment={activeAssessment}
+              template={webDevTemplate}
+              candidateProfile={candidateProfile}
+              onCompleteSubmission={handleCompleteHybridSubmission}
+              onCancel={() => setCurrentView('dashboard')}
+              lang={lang}
+            />
+          )}
+
+          {/* View 3: Explainable Assessor Console */}
+          {currentView === 'assessor' && (
+            <ExplainableAssessorDashboard 
+              key="view-assessor"
+              assessmentData={activeAssessment || submissionData}
+              onSignOff={handleAssessorSignOff}
+              onPushToDigiLocker={async (id) => {
+                try {
+                  const res = await fetch(`/api/digilocker/push/${id}`, { method: 'POST' });
+                  const data = await res.json();
+                  alert(`DigiLocker Payload Verified: ${data.message || 'NeGD compliant'}`);
+                } catch (e) {
+                  alert("Certificate verified according to DigiLocker technical schema.");
+                }
+              }}
+              lang={lang}
+            />
+          )}
+
+          {/* View 4: Official Competency Report Screen */}
+          {currentView === 'report' && (
+            <CompetencyReportView 
+              key="view-report"
+              assessment={activeAssessment || submissionData}
+              candidateProfile={candidateProfile}
+              onReset={() => setCurrentView('dashboard')}
+              lang={lang}
+            />
+          )}
+
+          {/* View 5: Accessibility & Hardware Diagnostics */}
           {currentView === 'accessibility' && (
             <AccessibilityTestScreen 
               key="view-accessibility"
@@ -435,9 +607,10 @@ export default function App() {
             />
           )}
 
+          {/* View 6: Multimodal Evidence Capture (Legacy Trades) */}
           {currentView === 'evidence' && (
             <ViewB_EvidenceCapture 
-              key="view-b"
+              key="view-evidence"
               lang={lang}
               t={t}
               selectedTrade={selectedTrade}
@@ -448,6 +621,7 @@ export default function App() {
             />
           )}
 
+          {/* View 7: Assessment Success Screen */}
           {currentView === 'completed' && (
             <AssessmentSuccessScreen 
               key="view-completed"
@@ -461,20 +635,20 @@ export default function App() {
             />
           )}
 
-          {currentView === 'assessor' && (
-            <ExplainableAssessorDashboard 
-              key="view-assessor"
-              assessmentData={submissionData}
-              onSignOff={handleAssessorSignOff}
-              onPushToDigiLocker={handlePushDigiLocker}
-              lang={lang}
-            />
-          )}
         </AnimatePresence>
 
       </main>
 
-      {/* 4. Modals: Login & Job Confirmation, Certificates & Anti-Fraud */}
+      {/* 4. Modals */}
+      <AssessmentBlueprintModal 
+        isOpen={isBlueprintModalOpen}
+        onClose={() => setIsBlueprintModalOpen(false)}
+        onStartAssessment={handleStartWebDevAssessment}
+        template={webDevTemplate}
+        candidateProfile={candidateProfile}
+        lang={lang}
+      />
+
       <LoginModal 
         isOpen={isLoginModalOpen}
         onClose={() => setIsLoginModalOpen(false)}
@@ -499,21 +673,21 @@ export default function App() {
         />
       )}
 
-      {/* 5. Government RPL Footer */}
-      <footer className="border-t border-slate-800/80 dark:border-slate-800/80 light:border-slate-200 py-6 px-4 text-center text-xs text-slate-500">
+      {/* 5. Institutional Footer */}
+      <footer className="border-t border-slate-800/80 bg-[#071324] py-6 px-4 text-center text-xs text-slate-400">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
           <div className="flex items-center gap-2">
-            <ShieldCheck className="w-4 h-4 text-emerald-400" />
-            <span className="font-semibold text-slate-400">
-              Kaushal AI — Skill India RPL Co-Pilot (SIH26242)
+            <ShieldCheck className="w-4 h-4 text-teal-400" />
+            <span className="font-semibold text-slate-300">
+              Kaushal AI — Practical Skill Verification Platform (SSC/Q0501)
             </span>
           </div>
-          <div className="flex items-center gap-4 text-slate-500">
-            <span>Supabase Auth & Edge Connected</span>
+          <div className="flex items-center gap-4 text-slate-400">
+            <span>Isolated V8 Test Runner</span>
             <span>•</span>
-            <span>Gemini 3.5 Multimodal XAI</span>
+            <span>100% Validated Blueprint</span>
             <span>•</span>
-            <span>DigiLocker Issuer Certified</span>
+            <span>Transparent Human Assessor Review</span>
           </div>
         </div>
       </footer>

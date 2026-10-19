@@ -11,10 +11,46 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   }
 });
 
-/**
- * Sign in with Supabase Auth or fallback to local offline candidate session
- */
 export async function loginUser(email, password) {
+  try {
+    // 1. Try local backend JWT authentication
+    const backendRes = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    });
+
+    if (backendRes.ok) {
+      const data = await backendRes.json();
+      if (data.token) {
+        localStorage.setItem('kaushal_ai_auth_token', data.token);
+      }
+      if (data.user) {
+        localStorage.setItem('kaushal_ai_active_user', JSON.stringify(data.user));
+      }
+      if (data.candidateProfile) {
+        const candidateRecord = {
+          id: data.candidateProfile.id,
+          fullName: data.candidateProfile.full_name,
+          email: data.user.email,
+          tradeId: data.candidateProfile.trade_id,
+          tradeName: data.candidateProfile.trade_id === 'web-developer-l5' 
+            ? 'Web Developer (NSQF Level 5)' 
+            : data.candidateProfile.current_occupation,
+          experienceYears: String(data.candidateProfile.informal_experience_years || 3),
+          workLocation: `${data.candidateProfile.district || ''}, ${data.candidateProfile.state || ''}`.replace(/^, /, ''),
+          primaryLanguage: data.candidateProfile.primary_language || 'en',
+          role: data.user.role
+        };
+        localStorage.setItem('kaushal_ai_active_candidate', JSON.stringify(candidateRecord));
+      }
+      return { success: true, user: data.user, token: data.token, candidateProfile: data.candidateProfile };
+    }
+  } catch (backendErr) {
+    console.warn('[Backend Auth] Note:', backendErr.message);
+  }
+
+  // 2. Fallback to Supabase Auth if backend endpoint is unavailable
   try {
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
@@ -23,7 +59,6 @@ export async function loginUser(email, password) {
     if (error) throw error;
     return { success: true, user: data.user, session: data.session };
   } catch (err) {
-    // If user doesn't exist yet or network error, check if local offline demo user
     console.warn('[Supabase Auth] Login note:', err.message);
     return { success: false, error: err.message };
   }

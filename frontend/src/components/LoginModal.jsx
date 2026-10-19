@@ -23,6 +23,19 @@ import { loginUser, registerUser, saveCandidateSession } from '../utils/supabase
 
 const PRELOADED_CANDIDATES = [
   {
+    id: "cand-103",
+    name: "Aarav Sharma",
+    email: "dev.candidate@skillindia.rpl",
+    tradeId: "web-developer-l5",
+    tradeTitle: "Web Developer (NSQF Level 5)",
+    experienceYears: "3",
+    employmentType: "Freelance Frontend & Web Developer",
+    workLocation: "Bengaluru, Karnataka",
+    companyName: "Sharma Dev Labs",
+    primaryLanguage: "en",
+    assistanceNeed: "Standard"
+  },
+  {
     id: "cand-101",
     name: "Ramesh Kumar Sharma",
     email: "ramesh.sharma@skillindia.rpl",
@@ -49,29 +62,16 @@ const PRELOADED_CANDIDATES = [
     assistanceNeed: "None"
   },
   {
-    id: "cand-103",
-    name: "Sunita Devi",
-    email: "sunita.devi@skillindia.rpl",
-    tradeId: "solar-l4",
-    tradeTitle: "Rooftop Solar PV Installer",
-    experienceYears: "4",
-    employmentType: "Solar Maintenance Technician",
-    workLocation: "Jaipur, Rajasthan",
-    companyName: "Surya Urja Services",
-    primaryLanguage: "hi",
-    assistanceNeed: "High Contrast Text"
-  },
-  {
-    id: "cand-104",
-    name: "Gurpreet Singh",
-    email: "gurpreet.singh@skillindia.rpl",
-    tradeId: "automotive-l4",
-    tradeTitle: "Four Wheeler Service Technician",
-    experienceYears: "12",
-    employmentType: "Independent Garage Master Mechanic",
-    workLocation: "Ludhiana, Punjab",
-    companyName: "Singh Motors & Workshop",
-    primaryLanguage: "hi",
+    id: "user-assessor-01",
+    name: "Rajesh Varma (Lead Assessor)",
+    email: "assessor@kaushal.gov.in",
+    tradeId: "assessor",
+    tradeTitle: "Certified Assessor (NCVET Verified)",
+    experienceYears: "10",
+    employmentType: "Lead Assessor",
+    workLocation: "New Delhi, National Capital",
+    companyName: "National Skill Assessment Council",
+    primaryLanguage: "en",
     assistanceNeed: "None"
   }
 ];
@@ -389,6 +389,7 @@ export default function LoginModal({ isOpen, onClose, onLoginSuccess, lang = 'hi
                     onChange={(e) => setTradeId(e.target.value)}
                     className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500 font-semibold"
                   >
+                    <option value="web-developer-l5">Web Developer (NSQF Level 5 - SSC/Q0501) [First Supported]</option>
                     <option value="electrician-l3">Assistant Electrician (NSQF Level 3 - ELE/Q3102)</option>
                     <option value="electrician-l4">Industrial Electrician (NSQF Level 4 - ELE/Q6301)</option>
                     <option value="solar-l4">Rooftop Solar PV Installer (Level 4 - SGJ/Q0101)</option>

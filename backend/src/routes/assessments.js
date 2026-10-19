@@ -9,6 +9,14 @@ const { db, logAuditEvent } = require('../data/database');
 const { evaluateAssessment } = require('../services/aiService');
 const { generateAssessmentReport } = require('../services/reportService');
 const { authenticateToken, optionalAuth, requireRole } = require('../middleware/auth');
+const {
+  evaluatePracticalCodingTask,
+  evaluateDebuggingTask,
+  evaluateKnowledgeAnswers,
+  evaluateTechnicalExplanation,
+  computeComprehensiveRubricScore
+} = require('../services/codeExecutionService');
+const { WEB_DEVELOPER_TEMPLATE } = require('../data/defaultTemplates');
 
 // Multer storage for media evidence
 const UPLOADS_DIR = path.join(__dirname, '..', '..', 'uploads');
@@ -208,11 +216,35 @@ router.get('/:id', authenticateToken, (req, res) => {
       SELECT * FROM reports WHERE assessment_id = ? ORDER BY released_at DESC LIMIT 1
     `).get(assessment.id);
 
+    // Load template if assigned
+    let template = null;
+    if (assessment.template_id) {
+      const rawTpl = db.prepare('SELECT * FROM assessment_templates WHERE id = ?').get(assessment.template_id);
+      if (rawTpl) {
+        template = {
+          ...rawTpl,
+          competencies: JSON.parse(rawTpl.competencies_json),
+          knowledgeTasks: JSON.parse(rawTpl.knowledge_tasks_json),
+          codingTask: JSON.parse(rawTpl.coding_task_json),
+          debugTask: JSON.parse(rawTpl.debug_task_json),
+          scoringRubric: JSON.parse(rawTpl.scoring_rubric_json),
+          rules: rawTpl.rules_json ? JSON.parse(rawTpl.rules_json) : null
+        };
+      }
+    }
+
     res.json({
       ...assessment,
       aiEvaluation: assessment.ai_evaluation_json ? JSON.parse(assessment.ai_evaluation_json) : null,
       antiFraudAudit: assessment.anti_fraud_audit_json ? JSON.parse(assessment.anti_fraud_audit_json) : null,
       assessorOverride: assessment.assessor_override_json ? JSON.parse(assessment.assessor_override_json) : null,
+      knowledgeSubmission: assessment.knowledge_submission_json ? JSON.parse(assessment.knowledge_submission_json) : null,
+      codingSubmission: assessment.coding_submission_json ? JSON.parse(assessment.coding_submission_json) : null,
+      debugSubmission: assessment.debug_submission_json ? JSON.parse(assessment.debug_submission_json) : null,
+      testResults: assessment.test_results_json ? JSON.parse(assessment.test_results_json) : null,
+      rubricScores: assessment.rubric_scores_json ? JSON.parse(assessment.rubric_scores_json) : null,
+      evidenceRequests: assessment.evidence_requests_json ? JSON.parse(assessment.evidence_requests_json) : null,
+      template,
       evidenceRecords,
       competencyAssessments,
       decisions,
@@ -571,4 +603,528 @@ router.post('/:id/score', authenticateToken, requireRole(['assessor', 'admin']),
   }
 });
 
+/**
+ * POST /api/assessments/start
+ * Start or resume hybrid assessment for candidate.
+ */
+router.post('/start', authenticateToken, (req, res) => {
+  try {
+    const { tradeId = 'web-developer-l5', templateId } = req.body;
+    let candidateId;
+
+    if (req.user.role === 'candidate') {
+      const profile = db.prepare('SELECT id FROM candidate_profiles WHERE user_id = ?').get(req.user.id);
+      if (!profile) {
+        return res.status(403).json({ error: "No candidate profile found for authenticated user." });
+      }
+      candidateId = profile.id;
+    } else {
+      candidateId = req.body.candidateId;
+      if (!candidateId) {
+        return res.status(400).json({ error: "candidateId is required when staff starts an assessment." });
+      }
+    }
+
+    const trade = db.prepare('SELECT * FROM occupations WHERE id = ?').get(tradeId);
+    if (!trade) {
+      return res.status(400).json({ error: `Trade '${tradeId}' is not an indexed occupation.` });
+    }
+
+    let template = null;
+    if (templateId) {
+      template = db.prepare('SELECT * FROM assessment_templates WHERE id = ? AND active = 1').get(templateId);
+    }
+    if (!template) {
+      template = db.prepare('SELECT * FROM assessment_templates WHERE trade_id = ? AND active = 1 ORDER BY version DESC LIMIT 1').get(tradeId);
+    }
+    if (!template && (tradeId === 'web-developer-l5' || tradeId === 'web-developer')) {
+      template = db.prepare('SELECT * FROM assessment_templates WHERE id = ?').get('tpl-web-developer-v1');
+    }
+
+    // Check for existing resumable draft
+    const existing = db.prepare(`
+      SELECT * FROM assessment_cases 
+      WHERE candidate_id = ? AND trade_id = ? AND status IN ('draft', 'returned_for_evidence', 'requires_practical_test')
+      ORDER BY created_at DESC LIMIT 1
+    `).get(candidateId, tradeId);
+
+    const parsedTemplate = template ? {
+      ...template,
+      competencies: JSON.parse(template.competencies_json),
+      knowledgeTasks: JSON.parse(template.knowledge_tasks_json),
+      codingTask: JSON.parse(template.coding_task_json),
+      debugTask: JSON.parse(template.debug_task_json),
+      scoringRubric: JSON.parse(template.scoring_rubric_json),
+      rules: template.rules_json ? JSON.parse(template.rules_json) : null
+    } : null;
+
+    if (existing) {
+      return res.json({
+        message: "Resumed active assessment session.",
+        isResumed: true,
+        assessment: {
+          ...existing,
+          knowledgeSubmission: existing.knowledge_submission_json ? JSON.parse(existing.knowledge_submission_json) : null,
+          codingSubmission: existing.coding_submission_json ? JSON.parse(existing.coding_submission_json) : null,
+          debugSubmission: existing.debug_submission_json ? JSON.parse(existing.debug_submission_json) : null,
+          testResults: existing.test_results_json ? JSON.parse(existing.test_results_json) : null,
+          rubricScores: existing.rubric_scores_json ? JSON.parse(existing.rubric_scores_json) : null
+        },
+        template: parsedTemplate,
+        currentStep: existing.current_step || 'knowledge'
+      });
+    }
+
+    const assessmentId = `asmt-${Date.now().toString().slice(-6)}`;
+    const effectiveTemplateId = template ? template.id : 'tpl-web-developer-v1';
+
+    db.prepare(`
+      INSERT INTO assessment_cases (
+        id, candidate_id, trade_id, center_id, assigned_assessor_id,
+        status, current_step, template_id, created_at, updated_at
+      ) VALUES (?, ?, ?, 'center-01', 'user-assessor-01', 'draft', 'knowledge', ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+    `).run(assessmentId, candidateId, tradeId, effectiveTemplateId);
+
+    logAuditEvent({
+      entityType: 'assessment',
+      entityId: assessmentId,
+      userId: req.user.id,
+      userRole: req.user.role,
+      action: 'ASSESSMENT_INITIALIZED',
+      details: { tradeId, templateId: effectiveTemplateId }
+    });
+
+    const created = db.prepare('SELECT * FROM assessment_cases WHERE id = ?').get(assessmentId);
+
+    res.status(201).json({
+      message: "Assessment session initialized.",
+      isResumed: false,
+      assessment: created,
+      template: parsedTemplate,
+      currentStep: 'knowledge'
+    });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to initialize assessment: " + err.message });
+  }
+});
+
+/**
+ * POST /api/assessments/:id/progress
+ * Save draft candidate progress (answers, code, step).
+ */
+router.post('/:id/progress', authenticateToken, (req, res) => {
+  try {
+    const { id } = req.params;
+    const { currentStep, codingSubmission, debugSubmission, knowledgeAnswers, explanationText } = req.body;
+
+    const assessment = db.prepare('SELECT * FROM assessment_cases WHERE id = ?').get(id);
+    if (!assessment) return res.status(404).json({ error: "Assessment case not found." });
+
+    if (req.user.role === 'candidate') {
+      const profile = db.prepare('SELECT id FROM candidate_profiles WHERE user_id = ?').get(req.user.id);
+      if (!profile || profile.id !== assessment.candidate_id) {
+        return res.status(403).json({ error: "Access forbidden: Candidate does not own this assessment." });
+      }
+    }
+
+    db.prepare(`
+      UPDATE assessment_cases
+      SET current_step = COALESCE(?, current_step),
+          coding_submission_json = COALESCE(?, coding_submission_json),
+          debug_submission_json = COALESCE(?, debug_submission_json),
+          knowledge_submission_json = COALESCE(?, knowledge_submission_json),
+          explanation_text = COALESCE(?, explanation_text),
+          updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `).run(
+      currentStep || null,
+      codingSubmission ? JSON.stringify(codingSubmission) : null,
+      debugSubmission ? JSON.stringify(debugSubmission) : null,
+      knowledgeAnswers ? JSON.stringify(knowledgeAnswers) : null,
+      explanationText || null,
+      id
+    );
+
+    res.json({ message: "Progress saved.", assessmentId: id, currentStep });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to save progress: " + err.message });
+  }
+});
+
+/**
+ * POST /api/assessments/:id/submit-knowledge
+ * Evaluates candidate knowledge answers server-side.
+ */
+router.post('/:id/submit-knowledge', authenticateToken, (req, res) => {
+  try {
+    const { id } = req.params;
+    const { answers } = req.body;
+
+    const assessment = db.prepare('SELECT * FROM assessment_cases WHERE id = ?').get(id);
+    if (!assessment) return res.status(404).json({ error: "Assessment case not found." });
+
+    if (req.user.role === 'candidate') {
+      const profile = db.prepare('SELECT id FROM candidate_profiles WHERE user_id = ?').get(req.user.id);
+      if (!profile || profile.id !== assessment.candidate_id) {
+        return res.status(403).json({ error: "Access forbidden." });
+      }
+    }
+
+    const evaluation = evaluateKnowledgeAnswers(answers || {});
+
+    db.prepare(`
+      UPDATE assessment_cases
+      SET knowledge_submission_json = ?,
+          current_step = 'coding',
+          updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `).run(JSON.stringify({ answers: answers || {}, evaluation }), id);
+
+    res.json({
+      message: "Knowledge questions evaluated.",
+      evaluation,
+      nextStep: 'coding'
+    });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to evaluate knowledge answers: " + err.message });
+  }
+});
+
+/**
+ * POST /api/assessments/:id/run-code-tests
+ * Runs deterministic tests on practical code without updating final state.
+ */
+router.post('/:id/run-code-tests', authenticateToken, (req, res) => {
+  try {
+    const { javascript, html, css } = req.body;
+    const testResults = evaluatePracticalCodingTask({ javascript, html, css });
+    res.json(testResults);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to execute tests: " + err.message });
+  }
+});
+
+/**
+ * POST /api/assessments/:id/submit-code
+ * Evaluates and commits practical coding task submission.
+ */
+router.post('/:id/submit-code', authenticateToken, (req, res) => {
+  try {
+    const { id } = req.params;
+    const { javascript, html, css } = req.body;
+
+    const assessment = db.prepare('SELECT * FROM assessment_cases WHERE id = ?').get(id);
+    if (!assessment) return res.status(404).json({ error: "Assessment not found." });
+
+    if (req.user.role === 'candidate') {
+      const profile = db.prepare('SELECT id FROM candidate_profiles WHERE user_id = ?').get(req.user.id);
+      if (!profile || profile.id !== assessment.candidate_id) {
+        return res.status(403).json({ error: "Access forbidden." });
+      }
+    }
+
+    const testResults = evaluatePracticalCodingTask({ javascript, html, css });
+
+    db.prepare(`
+      UPDATE assessment_cases
+      SET coding_submission_json = ?,
+          current_step = 'debugging',
+          updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `).run(JSON.stringify({ code: { javascript, html, css }, testResults }), id);
+
+    res.json({
+      message: "Practical coding task submitted.",
+      testResults,
+      nextStep: 'debugging'
+    });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to submit coding task: " + err.message });
+  }
+});
+
+/**
+ * POST /api/assessments/:id/submit-debug
+ * Evaluates and commits debugging task submission.
+ */
+router.post('/:id/submit-debug', authenticateToken, (req, res) => {
+  try {
+    const { id } = req.params;
+    const { javascript } = req.body;
+
+    const assessment = db.prepare('SELECT * FROM assessment_cases WHERE id = ?').get(id);
+    if (!assessment) return res.status(404).json({ error: "Assessment not found." });
+
+    if (req.user.role === 'candidate') {
+      const profile = db.prepare('SELECT id FROM candidate_profiles WHERE user_id = ?').get(req.user.id);
+      if (!profile || profile.id !== assessment.candidate_id) {
+        return res.status(403).json({ error: "Access forbidden." });
+      }
+    }
+
+    const testResults = evaluateDebuggingTask(javascript || '');
+
+    db.prepare(`
+      UPDATE assessment_cases
+      SET debug_submission_json = ?,
+          current_step = 'evidence',
+          updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `).run(JSON.stringify({ code: javascript, testResults }), id);
+
+    res.json({
+      message: "Debugging task submitted.",
+      testResults,
+      nextStep: 'evidence'
+    });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to submit debugging task: " + err.message });
+  }
+});
+
+/**
+ * POST /api/assessments/:id/submit-hybrid
+ * Finalize hybrid assessment submission with explanation and optional multimodal evidence.
+ */
+router.post('/:id/submit-hybrid', authenticateToken, upload.fields([
+  { name: 'practicalImage', maxCount: 1 },
+  { name: 'audioViva', maxCount: 1 },
+  { name: 'codeArtifact', maxCount: 1 }
+]), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { explanationText, antiFraudAudit } = req.body;
+
+    const assessment = db.prepare('SELECT * FROM assessment_cases WHERE id = ?').get(id);
+    if (!assessment) return res.status(404).json({ error: "Assessment not found." });
+
+    if (req.user.role === 'candidate') {
+      const profile = db.prepare('SELECT id FROM candidate_profiles WHERE user_id = ?').get(req.user.id);
+      if (!profile || profile.id !== assessment.candidate_id) {
+        return res.status(403).json({ error: "Access forbidden." });
+      }
+    }
+
+    const practicalImage = req.files && req.files['practicalImage'] ? req.files['practicalImage'][0] : null;
+    const audioViva = req.files && req.files['audioViva'] ? req.files['audioViva'][0] : null;
+
+    // Load previously recorded component evaluations
+    const knowledgeData = assessment.knowledge_submission_json ? JSON.parse(assessment.knowledge_submission_json) : null;
+    const codingData = assessment.coding_submission_json ? JSON.parse(assessment.coding_submission_json) : null;
+    const debugData = assessment.debug_submission_json ? JSON.parse(assessment.debug_submission_json) : null;
+
+    const explanationEvaluation = evaluateTechnicalExplanation(explanationText || assessment.explanation_text || '');
+
+    // Compute comprehensive unified rubric
+    const rubric = computeComprehensiveRubricScore({
+      knowledgeEvaluation: knowledgeData?.evaluation,
+      codingEvaluation: codingData?.testResults,
+      debugEvaluation: debugData?.testResults,
+      explanationEvaluation
+    });
+
+    const tx = db.transaction(() => {
+      // 1. Update Assessment Case
+      db.prepare(`
+        UPDATE assessment_cases
+        SET status = 'assessor_review_required',
+            current_step = 'completed',
+            explanation_text = COALESCE(?, explanation_text),
+            overall_score = ?,
+            recommendation = ?,
+            rubric_scores_json = ?,
+            test_results_json = ?,
+            anti_fraud_audit_json = COALESCE(?, anti_fraud_audit_json),
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+      `).run(
+        explanationText || null,
+        rubric.overallScore,
+        rubric.statusRecommendation,
+        JSON.stringify(rubric),
+        JSON.stringify(rubric.automatedTestsSummary),
+        antiFraudAudit ? (typeof antiFraudAudit === 'string' ? antiFraudAudit : JSON.stringify(antiFraudAudit)) : null,
+        id
+      );
+
+      // 2. Insert Evidence Records if files attached
+      if (practicalImage) {
+        const imgBuffer = fs.readFileSync(practicalImage.path);
+        const imgHash = crypto.createHash('sha256').update(imgBuffer).digest('hex');
+        db.prepare(`
+          INSERT INTO evidence_records (
+            id, assessment_id, candidate_id, evidence_type, file_path,
+            original_filename, mime_type, file_size, sha256_hash
+          ) VALUES (?, ?, ?, 'image', ?, ?, ?, ?, ?)
+        `).run(
+          `ev-img-${Date.now()}-${uuidv4().slice(0, 6)}`,
+          id,
+          assessment.candidate_id,
+          `/uploads/${path.basename(practicalImage.path)}`,
+          practicalImage.originalname,
+          practicalImage.mimetype,
+          practicalImage.size,
+          imgHash
+        );
+      }
+
+      if (audioViva) {
+        const audioBuffer = fs.readFileSync(audioViva.path);
+        const audioHash = crypto.createHash('sha256').update(audioBuffer).digest('hex');
+        db.prepare(`
+          INSERT INTO evidence_records (
+            id, assessment_id, candidate_id, evidence_type, file_path,
+            original_filename, mime_type, file_size, sha256_hash
+          ) VALUES (?, ?, ?, 'audio', ?, ?, ?, ?, ?)
+        `).run(
+          `ev-aud-${Date.now()}-${uuidv4().slice(0, 6)}`,
+          id,
+          assessment.candidate_id,
+          `/uploads/${path.basename(audioViva.path)}`,
+          audioViva.originalname,
+          audioViva.mimetype,
+          audioViva.size,
+          audioHash
+        );
+      }
+
+      // 3. Populate granular competency criteria
+      const insertComp = db.prepare(`
+        INSERT OR REPLACE INTO competency_assessments (
+          id, assessment_id, nos_code, pc_code, criteria_text,
+          evidence_status, ai_score, ai_suggestion
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      `);
+
+      for (const comp of rubric.rubricBreakdown) {
+        const dbEvidenceStatus = comp.percentage >= 70 
+          ? 'assessor_review_required' 
+          : (comp.percentage >= 40 ? 'partially_supported' : 'requires_practical_test');
+
+        insertComp.run(
+          `pc-${id}-${comp.nosCode}`,
+          id,
+          comp.nosCode,
+          'PC-CORE',
+          comp.title,
+          dbEvidenceStatus,
+          comp.awardedScore,
+          `Automated evaluation awarded ${comp.awardedScore}/${comp.maxScore} (${comp.percentage}%). Requires human assessor verification.`
+        );
+      }
+    });
+
+    tx();
+
+    logAuditEvent({
+      entityType: 'assessment',
+      entityId: id,
+      userId: req.user.id,
+      userRole: req.user.role,
+      action: 'HYBRID_ASSESSMENT_SUBMITTED',
+      details: { overallScore: rubric.overallScore, verificationStatus: rubric.verificationStatus }
+    });
+
+    const updated = db.prepare('SELECT * FROM assessment_cases WHERE id = ?').get(id);
+
+    res.json({
+      message: "Hybrid assessment submitted successfully for human assessor review.",
+      assessment: updated,
+      rubric
+    });
+  } catch (err) {
+    console.error('[Submit Hybrid Error]:', err);
+    res.status(500).json({ error: "Failed to finalize hybrid assessment: " + err.message });
+  }
+});
+
+/**
+ * POST /api/assessments/:id/request-evidence
+ * Assessor requests additional evidence or clarification.
+ */
+router.post('/:id/request-evidence', authenticateToken, requireRole(['assessor', 'admin']), (req, res) => {
+  try {
+    const { id } = req.params;
+    const { requestDetails } = req.body;
+
+    if (!requestDetails || requestDetails.trim().length < 5) {
+      return res.status(400).json({ error: "requestDetails must specify what evidence is requested (min 5 chars)." });
+    }
+
+    const assessment = db.prepare('SELECT * FROM assessment_cases WHERE id = ?').get(id);
+    if (!assessment) return res.status(404).json({ error: "Assessment case not found." });
+
+    const requests = assessment.evidence_requests_json ? JSON.parse(assessment.evidence_requests_json) : [];
+    requests.push({
+      assessorId: req.user.id,
+      assessorName: req.user.name || 'Assessor',
+      details: requestDetails.trim(),
+      requestedAt: new Date().toISOString()
+    });
+
+    db.prepare(`
+      UPDATE assessment_cases
+      SET status = 'returned_for_evidence',
+          evidence_requests_json = ?,
+          assessor_notes = COALESCE(?, assessor_notes),
+          updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `).run(JSON.stringify(requests), requestDetails.trim(), id);
+
+    logAuditEvent({
+      entityType: 'assessment',
+      entityId: id,
+      userId: req.user.id,
+      userRole: req.user.role,
+      action: 'EVIDENCE_REQUESTED_BY_ASSESSOR',
+      details: { requestDetails }
+    });
+
+    res.json({ message: "Evidence request sent to candidate.", status: 'returned_for_evidence' });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to request evidence: " + err.message });
+  }
+});
+
+/**
+ * POST /api/assessments/:id/retest
+ * Assessor orders a retest on practical coding tasks.
+ */
+router.post('/:id/retest', authenticateToken, requireRole(['assessor', 'admin']), (req, res) => {
+  try {
+    const { id } = req.params;
+    const { reason } = req.body;
+
+    if (!reason || reason.trim().length < 5) {
+      return res.status(400).json({ error: "A valid reason for retest is required (min 5 chars)." });
+    }
+
+    const assessment = db.prepare('SELECT * FROM assessment_cases WHERE id = ?').get(id);
+    if (!assessment) return res.status(404).json({ error: "Assessment case not found." });
+
+    db.prepare(`
+      UPDATE assessment_cases
+      SET status = 'requires_practical_test',
+          current_step = 'coding',
+          assessor_notes = ?,
+          updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `).run(`Retest ordered: ${reason.trim()}`, id);
+
+    logAuditEvent({
+      entityType: 'assessment',
+      entityId: id,
+      userId: req.user.id,
+      userRole: req.user.role,
+      action: 'RETEST_ORDERED_BY_ASSESSOR',
+      details: { reason }
+    });
+
+    res.json({ message: "Retest ordered for candidate.", status: 'requires_practical_test', currentStep: 'coding' });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to order retest: " + err.message });
+  }
+});
+
 module.exports = router;
+

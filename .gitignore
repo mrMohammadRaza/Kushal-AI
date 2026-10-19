@@ -1,6 +1,7 @@
 # Dependencies
 node_modules/
 */node_modules/
+/package-lock.json
 
 # Production build outputs
 dist/
@@ -45,3 +46,17 @@ Thumbs.db
 .vscode/
 .idea/
 *.log
+
+# Agent & local workflow state
+.gemini/
+.agent/
+.agents/
+.gsd/
+GSD-STYLE.md
+PROJECT_RULES.md
+VERSION
+adapters/
+model_capabilities.yaml
+scripts/validate-*
+scripts/search_repo.*
+scripts/setup_search.*

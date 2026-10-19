@@ -3,6 +3,7 @@ const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
+const { WEB_DEVELOPER_TEMPLATE } = require('./defaultTemplates');
 
 const DB_PATH = path.join(__dirname, '..', '..', 'data', 'kaushal_ai.db');
 const STANDARDS_PATH = path.join(__dirname, '..', '..', '..', 'data', 'nsqf_standards.json');
@@ -226,6 +227,25 @@ function initSchema() {
       completed_at DATETIME
     );
 
+    -- 13. Reusable Versioned Assessment Templates
+    CREATE TABLE IF NOT EXISTS assessment_templates (
+      id TEXT PRIMARY KEY,
+      trade_id TEXT NOT NULL REFERENCES occupations(id) ON DELETE CASCADE,
+      title TEXT NOT NULL,
+      version TEXT NOT NULL DEFAULT '1.0.0',
+      description TEXT,
+      level INTEGER NOT NULL DEFAULT 5,
+      competencies_json TEXT NOT NULL,
+      knowledge_tasks_json TEXT NOT NULL,
+      coding_task_json TEXT NOT NULL,
+      debug_task_json TEXT NOT NULL,
+      scoring_rubric_json TEXT NOT NULL,
+      rules_json TEXT,
+      active INTEGER DEFAULT 1,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
     -- Indexes for high-performance querying
     CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
     CREATE INDEX IF NOT EXISTS idx_assessment_candidate ON assessment_cases(candidate_id);
@@ -235,16 +255,38 @@ function initSchema() {
     CREATE INDEX IF NOT EXISTS idx_competency_assessment ON competency_assessments(assessment_id);
     CREATE INDEX IF NOT EXISTS idx_reports_hash ON reports(report_hash);
     CREATE INDEX IF NOT EXISTS idx_audit_entity ON audit_events(entity_type, entity_id);
+    CREATE INDEX IF NOT EXISTS idx_template_trade ON assessment_templates(trade_id);
   `);
+
+  // Migrate additional hybrid assessment columns to assessment_cases if not already present
+  const existingCols = db.pragma('table_info(assessment_cases)').map(c => c.name);
+  const colsToAdd = [
+    { name: 'template_id', type: 'TEXT' },
+    { name: 'knowledge_submission_json', type: 'TEXT' },
+    { name: 'coding_submission_json', type: 'TEXT' },
+    { name: 'debug_submission_json', type: 'TEXT' },
+    { name: 'explanation_text', type: 'TEXT' },
+    { name: 'test_results_json', type: 'TEXT' },
+    { name: 'rubric_scores_json', type: 'TEXT' },
+    { name: 'evidence_requests_json', type: 'TEXT' },
+    { name: 'current_step', type: "TEXT DEFAULT 'blueprint'" }
+  ];
+
+  for (const col of colsToAdd) {
+    if (!existingCols.includes(col.name)) {
+      try {
+        db.exec(`ALTER TABLE assessment_cases ADD COLUMN ${col.name} ${col.type}`);
+      } catch (err) {
+        console.warn(`[Database Migration] Warning adding column ${col.name}:`, err.message);
+      }
+    }
+  }
 }
 
 /**
- * Seeds official NSQF standards without populating demo users or credentials.
+ * Seeds official NSQF standards ensuring any missing trades are populated.
  */
 function seedStandardsOnly() {
-  const occCount = db.prepare('SELECT COUNT(*) as count FROM occupations').get().count;
-  if (occCount > 0) return;
-
   const pathsToTry = [
     STANDARDS_PATH,
     path.join(__dirname, '..', '..', 'data', 'nsqf_standards.json'),
@@ -268,16 +310,50 @@ function seedStandardsOnly() {
       VALUES (?, ?, ?, ?, ?, ?, ?)
     `);
 
+    const existingOccs = new Set(db.prepare('SELECT id FROM occupations').all().map(o => o.id));
+
     for (const tr of standardsData.trades) {
-      insertOcc.run(tr.id, tr.sector, tr.trade, tr.qpCode, tr.nsqfLevel, tr.description || tr.trade);
-      if (tr.nosList) {
-        for (const nos of tr.nosList) {
-          const compId = `${tr.id}-${nos.nosCode}`;
-          insertComp.run(compId, tr.id, nos.nosCode, nos.title, nos.weightage || 25, JSON.stringify(nos.performanceCriteria || []), JSON.stringify(nos.knowledgeCriteria || []));
+      if (!existingOccs.has(tr.id)) {
+        insertOcc.run(tr.id, tr.sector, tr.trade, tr.qpCode, tr.nsqfLevel, tr.description || tr.trade);
+        if (tr.nosList) {
+          for (const nos of tr.nosList) {
+            const compId = `${tr.id}-${nos.nosCode}`;
+            insertComp.run(compId, tr.id, nos.nosCode, nos.title, nos.weightage || 25, JSON.stringify(nos.performanceCriteria || []), JSON.stringify(nos.knowledgeCriteria || []));
+          }
         }
       }
     }
-    console.log('[Database] Official NSQF Standards seeded in production mode.');
+  }
+}
+
+/**
+ * Seeds default versioned assessment templates.
+ */
+function seedAssessmentTemplates() {
+  const existing = db.prepare('SELECT id FROM assessment_templates WHERE id = ?').get(WEB_DEVELOPER_TEMPLATE.id);
+  if (!existing) {
+    db.prepare(`
+      INSERT OR REPLACE INTO assessment_templates (
+        id, trade_id, title, version, description, level,
+        competencies_json, knowledge_tasks_json, coding_task_json, debug_task_json,
+        scoring_rubric_json, rules_json, active
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      WEB_DEVELOPER_TEMPLATE.id,
+      WEB_DEVELOPER_TEMPLATE.trade_id,
+      WEB_DEVELOPER_TEMPLATE.title,
+      WEB_DEVELOPER_TEMPLATE.version,
+      WEB_DEVELOPER_TEMPLATE.description,
+      WEB_DEVELOPER_TEMPLATE.level,
+      JSON.stringify(WEB_DEVELOPER_TEMPLATE.competencies),
+      JSON.stringify(WEB_DEVELOPER_TEMPLATE.knowledge_tasks),
+      JSON.stringify(WEB_DEVELOPER_TEMPLATE.coding_task),
+      JSON.stringify(WEB_DEVELOPER_TEMPLATE.debug_task),
+      JSON.stringify(WEB_DEVELOPER_TEMPLATE.scoring_rubric),
+      JSON.stringify(WEB_DEVELOPER_TEMPLATE.rules),
+      1
+    );
+    console.log('[Database] Web Developer Assessment Template seeded.');
   }
 }
 
@@ -286,24 +362,17 @@ function seedStandardsOnly() {
  */
 function seedInitialData() {
   const isProduction = process.env.NODE_ENV === 'production';
-  const userCount = db.prepare('SELECT COUNT(*) as count FROM users').get().count;
+  
+  // Always ensure standards & templates are synced
+  seedStandardsOnly();
+  seedAssessmentTemplates();
 
-  // In production, NEVER seed default demo accounts or passwords automatically
   if (isProduction) {
     console.log('[Database] Production mode active: skipping default demo credential seeding.');
-    seedStandardsOnly();
     return;
   }
 
-  if (userCount > 0) return; // Already seeded
-
-  console.log('[Database] Seeding initial users, standards, and demonstration records...');
-
-  const insertUser = db.prepare(`
-    INSERT INTO users (id, email, password_hash, full_name, role, center_id, phone)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
-  `);
-
+  const userCount = db.prepare('SELECT COUNT(*) as count FROM users').get().count;
   const passwordHash = bcrypt.hashSync('Kaushal@2026', 10);
 
   // Default Assessment Center
@@ -312,11 +381,16 @@ function seedInitialData() {
     VALUES ('center-01', 'VNS-SKILL-01', 'Varanasi National Vocational Skill Assessment Center', 'Uttar Pradesh', 'Varanasi')
   `).run();
 
+  const insertUser = db.prepare(`
+    INSERT OR IGNORE INTO users (id, email, password_hash, full_name, role, center_id, phone)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+  `);
+
   // Platform Admin
   insertUser.run('user-admin-01', 'admin@kaushal.gov.in', passwordHash, 'Dr. Sunita Rao (Director NCVET)', 'admin', 'center-01', '+91 98100 00001');
 
   // Lead Assessor (Human-in-the-Loop)
-  insertUser.run('user-assessor-01', 'assessor@kaushal.gov.in', passwordHash, 'Rajesh Varma (Certified Electrical Assessor)', 'assessor', 'center-01', '+91 98200 00002');
+  insertUser.run('user-assessor-01', 'assessor@kaushal.gov.in', passwordHash, 'Rajesh Varma (Certified Assessor)', 'assessor', 'center-01', '+91 98200 00002');
 
   // Assessment Center Manager
   insertUser.run('user-mgr-01', 'manager@kaushal.gov.in', passwordHash, 'Anil Tripathi (Center Superintendent)', 'center_manager', 'center-01', '+91 98300 00003');
@@ -327,55 +401,11 @@ function seedInitialData() {
   // Candidate Users
   insertUser.run('user-cand-101', 'ramesh.sharma@skillindia.rpl', passwordHash, 'Ramesh Kumar Sharma', 'candidate', 'center-01', '+91 98765 43210');
   insertUser.run('user-cand-102', 'aslam.ansari@skillindia.rpl', passwordHash, 'Mohammad Aslam Ansari', 'candidate', 'center-01', '+91 98111 22334');
-
-  // Seed Occupations from nsqf_standards.json
-  let standardsData = null;
-  const pathsToTry = [
-    STANDARDS_PATH,
-    path.join(__dirname, '..', '..', 'data', 'nsqf_standards.json'),
-    path.join(__dirname, '..', '..', '..', 'data', 'nsqf_standards.json')
-  ];
-  for (const p of pathsToTry) {
-    if (fs.existsSync(p)) {
-      standardsData = JSON.parse(fs.readFileSync(p, 'utf-8'));
-      break;
-    }
-  }
-
-  if (standardsData && standardsData.trades) {
-    const insertOcc = db.prepare(`
-      INSERT OR REPLACE INTO occupations (id, sector, trade, qp_code, nsqf_level, description, version)
-      VALUES (?, ?, ?, ?, ?, ?, '1.0')
-    `);
-
-    const insertComp = db.prepare(`
-      INSERT OR REPLACE INTO standards_competencies (id, trade_id, nos_code, title, weightage, performance_criteria_json, knowledge_criteria_json)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
-    `);
-
-    for (const tr of standardsData.trades) {
-      insertOcc.run(tr.id, tr.sector, tr.trade, tr.qpCode, tr.nsqfLevel, tr.description || tr.trade);
-
-      if (tr.nosList) {
-        for (const nos of tr.nosList) {
-          const compId = `${tr.id}-${nos.nosCode}`;
-          insertComp.run(
-            compId,
-            tr.id,
-            nos.nosCode,
-            nos.title,
-            nos.weightage || 25,
-            JSON.stringify(nos.performanceCriteria || []),
-            JSON.stringify(nos.knowledgeCriteria || [])
-          );
-        }
-      }
-    }
-  }
+  insertUser.run('user-cand-103', 'dev.candidate@skillindia.rpl', passwordHash, 'Aarav Sharma (Web Developer)', 'candidate', 'center-01', '+91 98450 12345');
 
   // Seed Candidate Profiles
   const insertCandidate = db.prepare(`
-    INSERT OR REPLACE INTO candidate_profiles (
+    INSERT OR IGNORE INTO candidate_profiles (
       id, user_id, full_name, age, gender, phone, aadhaar_last4, state, district,
       trade_id, informal_experience_years, education_level, current_occupation,
       primary_language, accessibility_pref, profile_photo, enrolled_date
@@ -396,6 +426,14 @@ function seedInitialData() {
     'Sub-station helper & Industrial Panel wirer', 'hi', 'Standard',
     'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&auto=format&fit=crop&q=80',
     '2026-03-20'
+  );
+
+  insertCandidate.run(
+    'cand-103', 'user-cand-103', 'Aarav Sharma', 26, 'Male', '+91 98450 12345', '9042',
+    'Karnataka', 'Bengaluru Urban', 'web-developer-l5', 3, 'Diploma in Computer Applications',
+    'Freelance Frontend & Web Developer', 'en', 'Standard',
+    'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80',
+    '2026-04-01'
   );
 
   console.log('[Database] Database initialized and seeded successfully.');

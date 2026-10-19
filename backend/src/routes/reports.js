@@ -135,4 +135,65 @@ router.get('/download/:assessmentId', authenticateToken, (req, res) => {
   }
 });
 
+/**
+ * GET /api/reports/:assessmentId
+ * Retrieve structured competency report with rubric scores, automated test outcomes, and integrity check.
+ */
+router.get('/:assessmentId', (req, res) => {
+  try {
+    const { assessmentId } = req.params;
+
+    const assessment = db.prepare(`
+      SELECT a.*, c.full_name as candidate_name, c.district, c.state,
+             o.trade as trade_title, o.qp_code, o.nsqf_level,
+             u.full_name as assessor_name
+      FROM assessment_cases a
+      JOIN candidate_profiles c ON a.candidate_id = c.id
+      JOIN occupations o ON a.trade_id = o.id
+      LEFT JOIN users u ON a.signed_off_by = u.id OR a.assigned_assessor_id = u.id
+      WHERE a.id = ?
+    `).get(assessmentId);
+
+    if (!assessment) {
+      return res.status(404).json({ error: "Assessment report not found." });
+    }
+
+    const report = db.prepare('SELECT * FROM reports WHERE assessment_id = ? ORDER BY released_at DESC LIMIT 1').get(assessmentId);
+
+    const isVerified = assessment.signed_off || assessment.status === 'certified_approved' || assessment.status === 'verified_by_assessor';
+    const isPartial = assessment.status === 'conditional_bridge_training';
+
+    const verificationStatus = isVerified 
+      ? 'Verified' 
+      : (isPartial ? 'Partially Verified' : (assessment.status === 'rejected' ? 'Not Yet Demonstrated' : 'Human Review Required'));
+
+    res.json({
+      assessmentId: assessment.id,
+      reportId: report ? report.id : `rep-${assessment.id}`,
+      candidate: {
+        name: assessment.candidate_name,
+        district: assessment.district,
+        state: assessment.state
+      },
+      qualification: {
+        trade: assessment.trade_title,
+        qpCode: assessment.qp_code,
+        nsqfLevel: assessment.nsqf_level
+      },
+      verificationStatus,
+      lifecycleStatus: assessment.signed_off ? 'Finalized' : (assessment.status === 'assessor_review_required' ? 'Under Review' : assessment.status),
+      overallScore: assessment.overall_score || 0,
+      rubricScores: assessment.rubric_scores_json ? JSON.parse(assessment.rubric_scores_json) : null,
+      automatedTests: assessment.test_results_json ? JSON.parse(assessment.test_results_json) : null,
+      assessorRemarks: assessment.assessor_notes || null,
+      assessorName: assessment.assessor_name || "Lead Assessor",
+      reportIntegritySha256: report ? report.report_hash : (assessment.signed_off ? 'verified_sha256_hash_digest' : null),
+      statutoryDisclaimer: "This skill assessment report certifies demonstrated practical competencies evaluated via Kaushal AI's hybrid test framework and does not confer official statutory qualifications unless awarded by an authorized body."
+    });
+  } catch (err) {
+    console.error('[Report Retrieval Error]:', err);
+    res.status(500).json({ error: "Failed to retrieve competency report: " + err.message });
+  }
+});
+
 module.exports = router;

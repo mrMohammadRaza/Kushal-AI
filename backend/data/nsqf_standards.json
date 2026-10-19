@@ -1,6 +1,134 @@
 {
   "trades": [
     {
+      "id": "web-developer-l5",
+      "sector": "IT & ITeS",
+      "trade": "Web Developer",
+      "qpCode": "SSC/Q0501",
+      "nsqfLevel": 5,
+      "description": "Designs, develops, tests, and maintains responsive client-side and full-stack web applications, accessible user interfaces, interactive component state, and structured API integrations adhering to modern web standards.",
+      "prerequisites": "Minimum 1 year practical web development, frontend programming, or relevant project portfolio",
+      "mandatoryPPE": [
+        "Ergonomic workstation setup",
+        "Display anti-glare / blue-light filter",
+        "Safe cable management harness"
+      ],
+      "standardTools": [
+        "Modern Web Browser DevTools (Chrome/Firefox/Edge)",
+        "Code Editor / IDE (VS Code)",
+        "Git Version Control CLI",
+        "Node.js Runtime & NPM",
+        "Lighthouse Accessibility Auditor",
+        "Terminal Console"
+      ],
+      "nosList": [
+        {
+          "nosCode": "SSC/N0501",
+          "title": "HTML and accessibility",
+          "weightage": 15,
+          "performanceCriteria": [
+            "PC1.1: Use semantic HTML5 elements (header, nav, main, section, article, footer, button) rather than non-semantic divs",
+            "PC1.2: Implement WCAG 2.1 AA accessible form controls with explicit labels, aria-labels, and error announcements",
+            "PC1.3: Ensure full keyboard navigability (tabindex, focus visible outlines, escape key dismissal)",
+            "PC1.4: Provide alternative text for images and descriptive link text"
+          ],
+          "knowledgeCriteria": [
+            "KC1.1: WAI-ARIA role and state attributes (aria-live, aria-expanded, aria-selected)",
+            "KC1.2: Document Object Model hierarchy and accessibility tree mapping"
+          ]
+        },
+        {
+          "nosCode": "SSC/N0502",
+          "title": "CSS and responsive design",
+          "weightage": 15,
+          "performanceCriteria": [
+            "PC2.1: Implement responsive layouts using CSS Flexbox and CSS Grid without horizontal overflow",
+            "PC2.2: Apply mobile-first media queries supporting standard viewport breakpoints (mobile, tablet, desktop)",
+            "PC2.3: Maintain accessible color contrast ratios (minimum 4.5:1 for normal text)",
+            "PC2.4: Utilize CSS custom properties (variables) for consistent design tokens and theming"
+          ],
+          "knowledgeCriteria": [
+            "KC2.1: CSS Box Model, specificity hierarchy, and layout rendering mechanics",
+            "KC2.2: Fluid typography and relative units (rem, em, ch, %)"
+          ]
+        },
+        {
+          "nosCode": "SSC/N0503",
+          "title": "JavaScript fundamentals",
+          "weightage": 20,
+          "performanceCriteria": [
+            "PC3.1: Write clean, idiomatic ES6+ JavaScript using modern syntax (const/let, arrow functions, destructuring)",
+            "PC3.2: Manage deterministic component state avoiding unexpected global mutations",
+            "PC3.3: Implement efficient event listeners and event delegation patterns",
+            "PC3.4: Handle asynchronous operations, Promises, and error boundary states"
+          ],
+          "knowledgeCriteria": [
+            "KC3.1: JavaScript Execution Context, Event Loop, and Asynchronous Microtask Queue",
+            "KC3.2: Array manipulation methods (map, filter, reduce, find, some, every) and immutability"
+          ]
+        },
+        {
+          "nosCode": "SSC/N0504",
+          "title": "Practical development",
+          "weightage": 30,
+          "performanceCriteria": [
+            "PC4.1: Construct an interactive Task-List application allowing dynamic task creation with input validation",
+            "PC4.2: Implement task completion toggle with visual feedback and state persistence",
+            "PC4.3: Provide real-time task filtering across All, Active, and Completed views",
+            "PC4.4: Support safe task deletion with immediate DOM and state synchronization"
+          ],
+          "knowledgeCriteria": [
+            "KC4.1: Separation of concerns between UI presentation, business logic, and data layer",
+            "KC4.2: Defensive input sanitization and XSS prevention"
+          ]
+        },
+        {
+          "nosCode": "SSC/N0505",
+          "title": "Debugging and problem-solving",
+          "weightage": 15,
+          "performanceCriteria": [
+            "PC5.1: Trace runtime flaws and logical defects using systematic debugging techniques",
+            "PC5.2: Identify and remediate unexpected state mutations and array filter anomalies",
+            "PC5.3: Verify edge case handling (empty strings, whitespace-only inputs, case sensitivity)",
+            "PC5.4: Run unit tests to prove regression-free defect resolution"
+          ],
+          "knowledgeCriteria": [
+            "KC5.1: Browser DevTools debugging, breakpoints, and console profiling",
+            "KC5.2: Unit test assertions and test-driven verification"
+          ]
+        },
+        {
+          "nosCode": "SSC/N0506",
+          "title": "Technical explanation",
+          "weightage": 5,
+          "performanceCriteria": [
+            "PC6.1: Clearly explain component design, state architecture, and trade-offs in technical writing",
+            "PC6.2: Articulate accessibility decisions and browser compatibility considerations"
+          ],
+          "knowledgeCriteria": [
+            "KC6.1: Software design patterns for frontend architecture and modular code design"
+          ]
+        }
+      ],
+      "vivaScenarios": [
+        {
+          "id": "viva_web_1",
+          "scenario": "Explain how you ensure your web application remains accessible for keyboard-only and screen-reader users, and how you prevent XSS vulnerabilities when displaying user-entered task titles in the DOM.",
+          "expectedKeywords": [
+            "semantic HTML",
+            "aria attributes",
+            "focus indicators",
+            "tabindex",
+            "keyboard navigation",
+            "input sanitization",
+            "escape HTML",
+            "textContent instead of innerHTML"
+          ],
+          "difficulty": "medium"
+        }
+      ]
+    },
+    {
       "id": "electrician-l3",
       "sector": "Electronics & Electrical",
       "trade": "Assistant Electrician",
