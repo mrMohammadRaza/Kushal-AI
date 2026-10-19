@@ -1,16 +1,17 @@
-const CACHE_NAME = 'kaushal-ai-cache-v1';
-const ASSETS_TO_CACHE = [
+// Kaushal AI Service Worker - Version 2 (Production Resilient)
+const CACHE_NAME = 'kaushal-ai-v2';
+
+// Safe minimal static assets to cache at install time
+const PRECACHE_ASSETS = [
   '/',
-  '/index.html',
-  '/src/main.jsx',
-  '/src/index.css'
+  '/index.html'
 ];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(ASSETS_TO_CACHE).catch((err) => {
-        console.log('[ServiceWorker] Pre-cache skipped:', err);
+      return cache.addAll(PRECACHE_ASSETS).catch((err) => {
+        console.warn('[ServiceWorker] Pre-cache warning:', err);
       });
     })
   );
@@ -23,6 +24,7 @@ self.addEventListener('activate', (event) => {
       return Promise.all(
         keys.map((key) => {
           if (key !== CACHE_NAME) {
+            console.log('[ServiceWorker] Purging legacy cache:', key);
             return caches.delete(key);
           }
         })
@@ -32,32 +34,99 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// Cache-First with Network Fallback Strategy
+// Message listener to allow immediate skip waiting
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
+});
+
 self.addEventListener('fetch', (event) => {
-  // Pass API and uploads directly to network
-  if (event.request.url.includes('/api/') || event.request.url.includes('/uploads/')) {
+  const req = event.request;
+  const url = new URL(req.url);
+
+  // 1. Never intercept mutations (POST, PUT, DELETE, PATCH)
+  if (req.method !== 'GET') {
     return;
   }
 
-  event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
-      if (cachedResponse) {
-        return cachedResponse;
-      }
-      return fetch(event.request).then((networkResponse) => {
-        if (networkResponse && networkResponse.status === 200) {
-          const clone = networkResponse.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, clone);
+  // 2. Never cache or intercept API endpoints, uploads, authentication, or private evidence
+  if (
+    url.pathname.startsWith('/api/') || 
+    url.pathname.startsWith('/uploads/') ||
+    url.pathname.includes('/auth/') ||
+    url.pathname.includes('/evidence')
+  ) {
+    return;
+  }
+
+  // 3. Navigation / HTML Requests: NETWORK-FIRST STRATEGY
+  // This guarantees new deployments serve the newest index.html referencing current JS/CSS hashes
+  if (req.mode === 'navigate' || req.headers.get('accept')?.includes('text/html')) {
+    event.respondWith(
+      fetch(req)
+        .then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200) {
+            const clone = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(req, clone));
+          }
+          return networkResponse;
+        })
+        .catch(async () => {
+          // Offline fallback: serve cached index.html
+          const cached = await caches.match(req);
+          if (cached) return cached;
+          const fallback = await caches.match('/');
+          if (fallback) return fallback;
+          return caches.match('/index.html');
+        })
+    );
+    return;
+  }
+
+  // 4. Hashed Assets (/assets/*): CACHE-FIRST STRATEGY with Network Fallback
+  if (url.pathname.startsWith('/assets/')) {
+    event.respondWith(
+      caches.match(req).then((cachedResponse) => {
+        if (cachedResponse) {
+          return cachedResponse;
+        }
+        return fetch(req)
+          .then((networkResponse) => {
+            if (networkResponse && networkResponse.status === 200) {
+              const clone = networkResponse.clone();
+              caches.open(CACHE_NAME).then((cache) => cache.put(req, clone));
+            }
+            return networkResponse;
+          })
+          .catch((fetchErr) => {
+            console.warn('[ServiceWorker] Asset fetch offline failure:', req.url, fetchErr);
+            // Return empty response with 503 instead of crashing respondWith
+            return new Response('Asset unavailable offline', { 
+              status: 503, 
+              statusText: 'Service Unavailable',
+              headers: { 'Content-Type': 'text/plain' }
+            });
           });
-        }
-        return networkResponse;
-      }).catch(() => {
-        // Return index for SPA navigation offline
-        if (event.request.mode === 'navigate') {
-          return caches.match('/');
-        }
-      });
+      })
+    );
+    return;
+  }
+
+  // 5. General Static Resources: Stale-While-Revalidate
+  event.respondWith(
+    caches.match(req).then((cachedResponse) => {
+      const fetchPromise = fetch(req)
+        .then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200) {
+            const clone = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(req, clone));
+          }
+          return networkResponse;
+        })
+        .catch(() => cachedResponse);
+
+      return cachedResponse || fetchPromise;
     })
   );
 });

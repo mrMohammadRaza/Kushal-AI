@@ -3,7 +3,7 @@
 > **Smart India Hackathon (Problem Statement: SIH26242)**  
 > Aligned with National Skills Qualification Framework (NSQF) & National Occupational Standards (NOS)
 
-[![Tests](https://img.shields.io/badge/Automated%20Tests-20%2F20%20Passing-brightgreen.svg)](#-automated-testing--validation)
+[![Tests](https://img.shields.io/badge/Automated%20Tests-39%2F39%20Passing-brightgreen.svg)](#-automated-testing--validation)
 [![Architecture](https://img.shields.io/badge/Architecture-Relational%20SQLite%20%2B%20WAL-blue.svg)](#-system-architecture)
 [![Security](https://img.shields.io/badge/Security-Server--Enforced%20RBAC%20%2B%20SHA--256-orange.svg)](#-security--integrity-framework)
 [![AI Governance](https://img.shields.io/badge/AI%20Governance-Human--in--the--Loop%20(Zero%20Fabrication)-purple.svg)](#-governance--non-fabrication-guarantees)
@@ -92,6 +92,7 @@ In strict compliance with national hackathon rules and industrial RPL regulation
 
 | Trade Code | Trade Name | NSQF Level | Core National Occupational Standards (NOS) |
 | :--- | :--- | :---: | :--- |
+| **SSC/Q0501** | **Web Developer (Primary Occupation)** | **Level 5** | **HTML & Accessibility, CSS & Responsive Design, JS Fundamentals, Practical Dev, Debugging, Technical Explanation** |
 | **ELE/Q1401** | Assistant Electrician | Level 3 | Tools & Safety, Wiring & Conduits, Distribution Boards, Testing |
 | **ELE/Q1402** | Commercial Electrician | Level 4 | Industrial Panels, 3-Phase Motors, Earth Pit Testing, Diagnostics |
 | **ASC/Q1401** | Automotive Service Technician | Level 4 | Engine Overhaul, Hydraulic Brakes, OBD-II Diagnostics, Safety |
@@ -102,35 +103,46 @@ In strict compliance with national hackathon rules and industrial RPL regulation
 
 ## 🧪 Automated Testing & Validation
 
-The codebase features comprehensive automated unit and integration tests across both the Node.js backend and the Python AI microservice.
+The codebase features comprehensive automated unit, integration, and sandbox security tests across both the Node.js backend and the Python AI microservice.
 
-### Test Results (20/20 Passing)
+### Test Results (39/39 Passing)
 
 ```
-Test Suites: 3 passed, 3 total
-Tests:       15 passed, 15 total
-Snapshots:   0 total
-Time:        1.82 s
+Test Suites: 4 passed, 4 total (Node.js Jest)
+Tests:       34 passed, 34 total
+Time:        8.92 s
 [Jest] Passed:
-  ✓ Auth & RBAC: Registration, Login, Token generation, Role enforcement
-  ✓ Evidence Integrity: SHA-256 hashing, Non-fabrication of missing evidence
-  ✓ Reports & QR Verification: PDF generation, Cryptographic digest matching, Anti-tampering
+  ✓ Web Developer Hybrid Assessment (15 tests):
+    - Blueprint weight validation strictly equals 100%
+    - Knowledge questions auto-scoring
+    - V8 sandbox practical coding task execution & DOM simulation
+    - Controlled defect debugging evaluation
+    - Complete multi-stage hybrid submission & transition to assessor review
+  ✓ Auth & RBAC (7 tests): Registration, Login, Token generation, Role enforcement, Center manager & Auditor boundaries
+  ✓ Evidence Integrity & Scoring (6 tests): SHA-256 cryptographic hashing, Zero-fabrication on missing evidence, Incomplete status rules
+  ✓ Reports & Verification (6 tests): PDF generation, Dynamic QR codes, Verification hash matching, Anti-tampering
 
+Test Sessions: 1 passed, 1 total (Python Pytest)
+Tests:         5 passed, 5 total
+Time:          2.05 s
 [Pytest] Passed:
-  ✓ Schema validation for multimodal assessment requests
-  ✓ Missing evidence outputs explicit zero-score & gaps
-  ✓ Bhashini service transparently reports unconfigured status
-  ✓ NSQF RAG engine accurately matches technical trade keywords
-  ✓ Bounded scoring constraints (no fabricated scores)
+  ✓ Health endpoint & indexed standards check
+  ✓ NSQF RAG engine competency matching
+  ✓ Missing evidence outputs explicit zero-score & gaps (non-fabrication)
+  ✓ Multimodal viva transcription flagged for mandatory human assessor review
+  ✓ Gemini Co-Pilot standards grounded assistance
 ```
 
 To execute the test suite:
 ```bash
-# Run backend Jest tests (15 tests)
+# Run backend Jest tests (34 tests)
 npm test
 
 # Run AI service Pytest tests (5 tests)
 npm run test:ai
+
+# Run all automated tests (39 tests)
+npm run test:all
 ```
 
 ---

@@ -56,22 +56,25 @@ export default function App() {
 
   // Candidate & Auth States
   const [candidateProfile, setCandidateProfile] = useState(() => {
-    const stored = getStoredCandidateSession();
-    if (stored) return stored;
-    return {
-      id: "cand-103",
-      fullName: "Aarav Sharma",
-      email: "dev.candidate@skillindia.rpl",
-      tradeId: "web-developer-l5",
-      tradeName: "Web Developer (NSQF Level 5)",
-      experienceYears: "3",
-      employmentType: "Freelance Frontend & Web Developer",
-      workLocation: "Bengaluru, Karnataka",
-      companyName: "Sharma Dev Labs",
-      primaryLanguage: "en",
-      role: "candidate"
-    };
+    return getStoredCandidateSession();
   });
+  const [isDemoMode, setIsDemoMode] = useState(false);
+
+  const DEMO_WEB_DEV_CANDIDATE = {
+    id: "cand-103",
+    fullName: "Aarav Sharma",
+    email: "dev.candidate@skillindia.rpl",
+    tradeId: "web-developer-l5",
+    tradeName: "Web Developer (NSQF Level 5)",
+    experienceYears: "3",
+    employmentType: "Freelance Frontend & Web Developer",
+    workLocation: "Bengaluru, Karnataka",
+    companyName: "Sharma Dev Labs",
+    primaryLanguage: "en",
+    role: "candidate",
+    isDemo: true
+  };
+
 
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [isCertModalOpen, setIsCertModalOpen] = useState(false);
@@ -116,14 +119,14 @@ export default function App() {
   // Fetch Assessment Template & Authenticate Default Token on Mount
   useEffect(() => {
     async function initSessionAndTemplate() {
-      // 1. Ensure a valid JWT token exists in localStorage
+      // 1. If a candidate profile exists but auth token is missing, attempt auto-login
       let token = localStorage.getItem('kaushal_ai_auth_token');
-      if (!token) {
+      if (!token && candidateProfile?.email) {
         try {
           const authRes = await fetch('/api/auth/login', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email: candidateProfile?.email || 'dev.candidate@skillindia.rpl', password: 'Kaushal@2026' })
+            body: JSON.stringify({ email: candidateProfile.email, password: 'Kaushal@2026' })
           });
           if (authRes.ok) {
             const data = await authRes.json();
@@ -136,6 +139,7 @@ export default function App() {
           console.warn('[Init Auth]:', e.message);
         }
       }
+
 
       // 2. Fetch Web Developer Assessment Template
       try {
@@ -216,14 +220,50 @@ export default function App() {
     }
   };
 
+  // Explicit Demo Mode Activation
+  const handleLaunchDemo = async () => {
+    setIsDemoMode(true);
+    setCandidateProfile(DEMO_WEB_DEV_CANDIDATE);
+    localStorage.setItem('kaushal_ai_active_candidate', JSON.stringify(DEMO_WEB_DEV_CANDIDATE));
+    try {
+      const res = await loginUser(DEMO_WEB_DEV_CANDIDATE.email, 'Kaushal@2026');
+      if (res?.token) {
+        localStorage.setItem('kaushal_ai_auth_token', res.token);
+      }
+    } catch (e) {
+      console.warn('[Demo Auth]:', e.message);
+    }
+  };
+
+  // Sign out handler
+  const handleLogout = () => {
+    clearCandidateSession();
+    localStorage.removeItem('kaushal_ai_auth_token');
+    localStorage.removeItem('kaushal_ai_active_user');
+    setCandidateProfile(null);
+    setIsDemoMode(false);
+    setActiveAssessment(null);
+    setCurrentView('dashboard');
+  };
+
   // Start or resume the Web Developer hybrid assessment
   const handleStartWebDevAssessment = async () => {
+    if (!candidateProfile) {
+      setIsLoginModalOpen(true);
+      return;
+    }
+
     let token = localStorage.getItem('kaushal_ai_auth_token');
     
     // Ensure token is active
+    if (!token && candidateProfile?.email) {
+      const res = await loginUser(candidateProfile.email, 'Kaushal@2026');
+      token = res?.token || localStorage.getItem('kaushal_ai_auth_token');
+    }
+
     if (!token) {
-      const res = await loginUser(candidateProfile?.email || 'dev.candidate@skillindia.rpl', 'Kaushal@2026');
-      token = localStorage.getItem('kaushal_ai_auth_token');
+      setIsLoginModalOpen(true);
+      return;
     }
 
     try {
@@ -253,6 +293,7 @@ export default function App() {
     setIsBlueprintModalOpen(false);
     setCurrentView('hybrid_engine');
   };
+
 
   // Switch context/role cleanly
   const handleSwitchRole = async (roleKey) => {
@@ -467,6 +508,7 @@ export default function App() {
         candidateProfile={candidateProfile}
         onOpenLogin={() => setIsLoginModalOpen(true)}
         onSwitchRole={handleSwitchRole}
+        onLogout={handleLogout}
         currentView={currentView}
         setCurrentView={setCurrentView}
         onOpenBlueprint={() => setIsBlueprintModalOpen(true)}
@@ -541,6 +583,7 @@ export default function App() {
               onSpeakPrompt={() => speakInstructions()}
               candidateProfile={candidateProfile}
               onOpenLogin={() => setIsLoginModalOpen(true)}
+              onLaunchDemo={handleLaunchDemo}
               onOpenAccessibility={() => setCurrentView('accessibility')}
               onStartWebDevAssessment={handleStartWebDevAssessment}
               onOpenBlueprint={() => setIsBlueprintModalOpen(true)}

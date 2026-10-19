@@ -29,6 +29,7 @@ export default function Header({
   candidateProfile,
   onOpenLogin,
   onSwitchRole,
+  onLogout,
   currentView,
   setCurrentView,
   onOpenBlueprint,
@@ -98,14 +99,14 @@ export default function Header({
               title="Switch user role or account"
             >
               <div className="w-6 h-6 rounded-lg bg-teal-600/30 text-teal-300 flex items-center justify-center font-black text-xs">
-                {activeRole === 'assessor' ? 'A' : (activeRole === 'admin' ? 'Adm' : 'C')}
+                {candidateProfile ? (activeRole === 'assessor' ? 'A' : (activeRole === 'admin' ? 'Adm' : 'C')) : <User className="w-3.5 h-3.5 text-teal-300" />}
               </div>
               <div className="text-left hidden sm:block">
                 <span className="block text-[11px] font-extrabold leading-none text-white">
-                  {candidateProfile?.fullName?.split(' ')[0] || 'User'}
+                  {candidateProfile?.fullName?.split(' ')[0] || (isHi ? 'साइन इन' : 'Sign In')}
                 </span>
                 <span className="text-[10px] text-teal-400 font-semibold capitalize">
-                  {activeRole === 'assessor' ? 'Assessor' : (candidateProfile?.tradeName?.split(' ')[0] || 'Candidate')}
+                  {candidateProfile ? (activeRole === 'assessor' ? 'Assessor' : (candidateProfile?.tradeName?.split(' ')[0] || 'Candidate')) : (isHi ? 'अतिथि' : 'Guest')}
                 </span>
               </div>
               <ChevronDown className="w-3.5 h-3.5 text-teal-400" />
@@ -174,18 +175,32 @@ export default function Header({
                   </div>
                 </button>
 
-                <div className="pt-1 border-t border-slate-800">
+                <div className="pt-1 border-t border-slate-800 space-y-1">
                   <button
                     type="button"
                     onClick={() => {
                       onOpenLogin?.();
                       setShowRoleMenu(false);
                     }}
-                    className="w-full text-left p-2 rounded-xl hover:bg-slate-900 text-slate-300 flex items-center gap-2 text-xs font-bold"
+                    className="w-full text-left p-2 rounded-xl hover:bg-slate-900 text-teal-300 flex items-center gap-2 text-xs font-bold transition-colors"
                   >
                     <UserCheck className="w-3.5 h-3.5 text-teal-400" />
-                    <span>Custom Credentials Login</span>
+                    <span>{isHi ? 'खाता लॉगिन (Sign In / Register)' : 'Account Sign In / Register'}</span>
                   </button>
+
+                  {candidateProfile && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onLogout?.();
+                        setShowRoleMenu(false);
+                      }}
+                      className="w-full text-left p-2 rounded-xl hover:bg-rose-950/40 text-rose-300 flex items-center gap-2 text-xs font-bold transition-colors"
+                    >
+                      <LogOut className="w-3.5 h-3.5 text-rose-400" />
+                      <span>{isHi ? 'लॉग आउट (Sign Out)' : 'Sign Out'}</span>
+                    </button>
+                  )}
                 </div>
               </div>
             )}

@@ -20,17 +20,72 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 const HOST = '0.0.0.0';
 
-// Security Headers & CORS
+const { authenticateToken, requireRole } = require('./middleware/auth');
+
+// Explicit Trusted Origins & CORS
+const allowedOrigins = process.env.ALLOWED_ORIGINS 
+  ? process.env.ALLOWED_ORIGINS.split(',').map(s => s.trim())
+  : [
+      'http://localhost:3000',
+      'http://localhost:3001',
+      'http://localhost:5000',
+      'https://kushal-ai.vercel.app'
+    ];
+
 app.use(cors({
-  origin: '*', // Configurable via environment in production
+  origin: (origin, callback) => {
+    if (!origin) return callback(null, true);
+    if (
+      process.env.NODE_ENV !== 'production' ||
+      allowedOrigins.includes(origin) ||
+      origin.endsWith('.vercel.app')
+    ) {
+      return callback(null, true);
+    }
+    return callback(new Error('CORS access denied: origin not in trusted list.'));
+  },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Correlation-ID']
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Correlation-ID'],
+  credentials: true
 }));
+
+// Standard Security Headers
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  next();
+});
+
+// Lightweight In-Memory Rate Limiter for Sensitive Endpoints
+const rateLimitMap = new Map();
+function rateLimiter({ windowMs = 60000, max = 60, message = "Too many requests. Please try again shortly." } = {}) {
+  return (req, res, next) => {
+    const ip = req.ip || req.connection.remoteAddress || 'unknown';
+    const now = Date.now();
+    const clientRecord = rateLimitMap.get(ip) || { count: 0, resetTime: now + windowMs };
+
+    if (now > clientRecord.resetTime) {
+      clientRecord.count = 1;
+      clientRecord.resetTime = now + windowMs;
+    } else {
+      clientRecord.count++;
+    }
+
+    rateLimitMap.set(ip, clientRecord);
+
+    if (clientRecord.count > max) {
+      return res.status(429).json({ error: message, retryAfterSeconds: Math.ceil((clientRecord.resetTime - now) / 1000) });
+    }
+
+    next();
+  };
+}
 
 app.use(express.json({ limit: '30mb' }));
 app.use(express.urlencoded({ extended: true, limit: '30mb' }));
 
-const { authenticateToken } = require('./middleware/auth');
 
 // Protected evidence access route (replaces unrestricted static exposure)
 app.get('/uploads/:filename', authenticateToken, (req, res) => {
@@ -106,19 +161,36 @@ app.get(['/api/health', '/health'], (req, res) => {
   });
 });
 
-// Interactive Gemini Assessor Co-Pilot
-app.post('/api/ai/copilot', async (req, res) => {
-  try {
-    const { message, assessmentContext, trade } = req.body;
-    if (!message) {
-      return res.status(400).json({ error: "message is required." });
+// Interactive Gemini Assessor Co-Pilot (Authorized Assessment Staff Only)
+app.post(
+  '/api/ai/copilot', 
+  rateLimiter({ windowMs: 60000, max: 30 }),
+  authenticateToken, 
+  requireRole(['assessor', 'center_manager', 'admin', 'auditor']), 
+  async (req, res) => {
+    try {
+      const { message, assessmentContext, trade } = req.body;
+      if (!message || typeof message !== 'string' || !message.trim()) {
+        return res.status(400).json({ error: "message is required and must be non-empty text." });
+      }
+
+      // Sanitize input length to prevent token abuse or overflow
+      const safeMessage = message.trim().slice(0, 2000);
+
+      const reply = await chatCopilot({ 
+        message: safeMessage, 
+        assessmentContext, 
+        trade 
+      });
+
+      res.json({ reply });
+    } catch (err) {
+      console.error("[Copilot Error]:", err.message);
+      res.status(500).json({ error: "Co-pilot assistance temporarily unavailable." });
     }
-    const reply = await chatCopilot({ message, assessmentContext, trade });
-    res.json({ reply });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
   }
-});
+);
+
 
 // Mount Routes
 app.use('/api/auth', authRoute);

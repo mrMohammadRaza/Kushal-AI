@@ -44,6 +44,7 @@ export default function ViewA_Dashboard({
   onSpeakPrompt,
   candidateProfile,
   onOpenLogin,
+  onLaunchDemo,
   onOpenAccessibility,
   onStartWebDevAssessment,
   onOpenBlueprint,
@@ -157,6 +158,36 @@ export default function ViewA_Dashboard({
                 : 'Not just passive quizzes. Demonstrate competency through real coding tasks, automated test checks, controlled defect debugging, and transparent assessor review.'}
             </p>
 
+            {/* Guest / Authentication Notice */}
+            {!candidateProfile && (
+              <div className="p-3.5 rounded-2xl bg-teal-500/10 border border-teal-500/30 flex flex-wrap items-center justify-between gap-3 text-xs">
+                <div className="flex items-center gap-2 text-teal-200">
+                  <UserCheck className="w-4 h-4 text-teal-400 shrink-0" />
+                  <span>
+                    {isHi 
+                      ? 'अतिथि मोड: RPL प्रमाणन रिकॉर्ड करने के लिए लॉगिन करें या तुरंत जांचने के लिए डेमो शुरू करें।'
+                      : 'Guest Mode: Sign in to save certified records, or launch instant interactive demo to test all stages.'}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={onOpenLogin}
+                    className="px-3 py-1.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold transition-all shadow-sm"
+                  >
+                    {isHi ? 'साइन इन करें' : 'Sign In'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={onLaunchDemo}
+                    className="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-amber-300 border border-amber-500/40 font-bold transition-all"
+                  >
+                    {isHi ? 'डेमो शुरू करें' : 'Explore Demo'}
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* Quick Action Toolbar */}
             <div className="pt-2 flex flex-wrap items-center gap-3">
               <button
@@ -170,6 +201,19 @@ export default function ViewA_Dashboard({
                 <span>{hasActiveWebDev ? (isHi ? 'परीक्षण जारी रखें' : 'Continue Web Developer Test') : (isHi ? 'वेब डेवलपर परीक्षा शुरू करें' : 'Start Web Developer Test')}</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
+
+              {!candidateProfile && (
+                <button
+                  type="button"
+                  id="btn-launch-demo-toolbar"
+                  onClick={onLaunchDemo}
+                  className="px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-extrabold
+                    bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/40 flex items-center gap-2 transition-all active:scale-95"
+                >
+                  <Sparkles className="w-4 h-4 text-amber-300" />
+                  <span>{isHi ? 'इंटरएक्टिव डेमो' : 'Explore Demo'}</span>
+                </button>
+              )}
 
               <button
                 type="button"

@@ -78,8 +78,8 @@ async function generateAssessmentReport(assessmentId, assessorUser) {
     doc.font('Helvetica').fontSize(9).fillColor('#334155')
        .text(`Name: ${assessment.candidate_name}`, 50, 122)
        .text(`Candidate ID: ${assessment.candidate_id}`, 50, 137)
-       .text(`District / State: ${assessment.district || 'Varanasi'}, ${assessment.state || 'Uttar Pradesh'}`, 50, 152)
-       .text(`Aadhaar (Last 4): ****-****-${assessment.aadhaar_last4 || '4589'}`, 50, 167);
+       .text(`District / State: ${assessment.district || 'Unspecified'}, ${assessment.state || ''}`.replace(/, $/, ''), 50, 152)
+       .text(`Aadhaar (Last 4): ****-****-${assessment.aadhaar_last4 || 'XXXX'}`, 50, 167);
 
     doc.fillColor('#1e293b').fontSize(9).font('Helvetica-Bold')
        .text('OCCUPATION & STANDARD', 300, 105);

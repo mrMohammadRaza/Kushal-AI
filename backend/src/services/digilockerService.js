@@ -4,6 +4,20 @@ const { db, logAuditEvent } = require('../data/database');
 const DIGILOCKER_ISSUER_ID = process.env.DIGILOCKER_ISSUER_ID || 'in.gov.skillindia.kaushalai.pilot';
 const DIGILOCKER_API_KEY = process.env.DIGILOCKER_API_KEY || 'kaushal_digilocker_sandbox_key_2026';
 
+function escapeXml(unsafe) {
+  if (unsafe === null || unsafe === undefined) return '';
+  return String(unsafe).replace(/[<>&'"]/g, (c) => {
+    switch (c) {
+      case '<': return '&lt;';
+      case '>': return '&gt;';
+      case '&': return '&amp;';
+      case '\'': return '&apos;';
+      case '"': return '&quot;';
+      default: return c;
+    }
+  });
+}
+
 /**
  * Generates official DigiLocker compliant XML and metadata record for sandbox/pilot demonstration.
  * Discloses that official national deployment requires production credentials from NeGD/DigiLocker.
@@ -19,7 +33,7 @@ function generateDigiLockerCertificatePayload({
   assessorName,
   issuedDate
 }) {
-  const docId = `KAI-RPL-${assessmentId.replace('asmt-', '')}`;
+  const docId = `KAI-RPL-${String(assessmentId || '').replace('asmt-', '')}`;
   const docUri = `${DIGILOCKER_ISSUER_ID}-SKLCERT-${docId}`;
 
   // Digital Signature Digest (HMAC-SHA256)
@@ -29,30 +43,38 @@ function generateDigiLockerCertificatePayload({
     .update(signatureData)
     .digest('hex');
 
+  const safeCandidateName = escapeXml(candidateName || 'Candidate');
+  const safeCandidateId = escapeXml(candidateId || '');
+  const safeAadhaarLast4 = escapeXml(aadhaarLast4 || 'XXXX');
+  const safeTradeTitle = escapeXml(tradeTitle || 'Vocational Trade');
+  const safeAssessorName = escapeXml(assessorName || 'Lead Sector Assessor');
+  const safeScore = Math.max(0, Math.min(100, Number(overallScore) || 0));
+
   const xmlContent = `<?xml version="1.0" encoding="UTF-8"?>
 <Certificate xmlns="http://digilocker.gov.in/certificate" version="1.0">
   <DocDetails>
     <DocType>SKLCERT</DocType>
-    <DocId>${docId}</DocId>
-    <DocUri>${docUri}</DocUri>
-    <IssueDate>${issuedDate}</IssueDate>
+    <DocId>${escapeXml(docId)}</DocId>
+    <DocUri>${escapeXml(docUri)}</DocUri>
+    <IssueDate>${escapeXml(issuedDate)}</IssueDate>
     <IssuerName>Kaushal AI RPL Pilot Issuer (National Council for Vocational Education and Training Framework)</IssuerName>
     <DigitalSignature>${digitalSignature}</DigitalSignature>
   </DocDetails>
   <CandidateDetails>
-    <Name>${candidateName}</Name>
-    <CandidateId>${candidateId}</CandidateId>
-    <AadhaarLast4>${aadhaarLast4 || '4589'}</AadhaarLast4>
+    <Name>${safeCandidateName}</Name>
+    <CandidateId>${safeCandidateId}</CandidateId>
+    <AadhaarLast4>${safeAadhaarLast4}</AadhaarLast4>
   </CandidateDetails>
   <SkillDetails>
-    <Trade>${tradeTitle}</Trade>
-    <NSQFLevel>${nsqfLevel}</NSQFLevel>
-    <OverallScore>${overallScore || 80}%</OverallScore>
-    <Grade>${(overallScore || 80) >= 85 ? 'A+' : ((overallScore || 80) >= 70 ? 'A' : 'B')}</Grade>
-    <AssessorName>${assessorName || 'Lead Sector Assessor'}</AssessorName>
+    <Trade>${safeTradeTitle}</Trade>
+    <NSQFLevel>${Number(nsqfLevel) || 5}</NSQFLevel>
+    <OverallScore>${safeScore}%</OverallScore>
+    <Grade>${safeScore >= 85 ? 'A+' : (safeScore >= 70 ? 'A' : 'B')}</Grade>
+    <AssessorName>${safeAssessorName}</AssessorName>
     <VerificationStatus>VERIFIED_HUMAN_ASSESSOR_RPL</VerificationStatus>
   </SkillDetails>
 </Certificate>`;
+
 
   return {
     docId,

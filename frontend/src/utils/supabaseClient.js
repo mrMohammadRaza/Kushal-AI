@@ -1,15 +1,49 @@
 import { createClient } from '@supabase/supabase-js';
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://tmdrouofryymaqvxfhrx.supabase.co';
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+function createSafeSupabaseClient() {
+  const url = import.meta.env.VITE_SUPABASE_URL || 'https://tmdrouofryymaqvxfhrx.supabase.co';
+  const key = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-  auth: {
-    persistSession: true,
-    autoRefreshToken: true,
-    detectSessionInUrl: true
+  if (key && typeof key === 'string' && key.trim().length > 0) {
+    try {
+      return createClient(url, key.trim(), {
+        auth: {
+          persistSession: true,
+          autoRefreshToken: true,
+          detectSessionInUrl: true
+        }
+      });
+    } catch (err) {
+      console.warn('[Supabase Client] Failed to initialize with provided key:', err);
+    }
   }
-});
+
+  // Resilient fallback mock when Supabase credentials are not configured in production
+  console.info('[Supabase Client] VITE_SUPABASE_ANON_KEY not configured. Running in standalone local backend mode.');
+  return {
+    auth: {
+      signInWithPassword: async () => ({ 
+        data: null, 
+        error: new Error('Remote Supabase unconfigured. Please authenticate via local backend.') 
+      }),
+      signUp: async () => ({ 
+        data: null, 
+        error: new Error('Remote Supabase unconfigured. Please authenticate via local backend.') 
+      }),
+      signOut: async () => ({ error: null }),
+      getSession: async () => ({ data: { session: null }, error: null }),
+      onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } })
+    },
+    from: () => ({
+      select: () => ({ data: [], error: null }),
+      insert: () => ({ data: null, error: null }),
+      update: () => ({ data: null, error: null }),
+      upsert: () => ({ data: null, error: null })
+    })
+  };
+}
+
+export const supabase = createSafeSupabaseClient();
 
 export async function loginUser(email, password) {
   try {
