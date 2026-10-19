@@ -135,13 +135,69 @@ export async function syncPendingAssessments(apiEndpoint = '/api/assessments/eva
       if (response.ok) {
         await markAssessmentSynced(item.queueId);
         syncedCount++;
+      } else if (response.status >= 400 && response.status < 500) {
+        // Permanent client/validation/auth error — do NOT leave in retry loop!
+        console.error(`[Offline Sync] Permanent rejection (${response.status}) for queue item ${item.queueId}. Removing from active retry.`);
+        await markAssessmentFailed(item.queueId, `HTTP ${response.status}: Client validation or authorization rejected`);
+      } else {
+        // 5xx temporary server error — increment retry count
+        await incrementRetryCount(item.queueId);
       }
     } catch (err) {
-      console.warn(`[Offline Sync] Failed to sync item ${item.queueId}:`, err);
+      // Genuine network disconnect (e.g. fetch failed) - leave as pending for next online event
+      console.warn(`[Offline Sync] Transient network error for item ${item.queueId}:`, err.message);
     }
   }
 
   return { syncedCount, remaining: pendingItems.length - syncedCount };
+}
+
+/**
+ * Marks an item as permanently failed or removes it so it doesn't loop forever.
+ */
+export async function markAssessmentFailed(queueId, reason = 'Validation failed') {
+  const db = await openDatabase();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction([STORE_QUEUE], 'readwrite');
+    const store = tx.objectStore(STORE_QUEUE);
+    const getReq = store.get(queueId);
+    getReq.onsuccess = () => {
+      const record = getReq.result;
+      if (record) {
+        record.status = 'rejected';
+        record.rejectionReason = reason;
+        record.rejectedAt = new Date().toISOString();
+        store.put(record);
+      }
+      resolve(true);
+    };
+    getReq.onerror = () => reject(getReq.error);
+  });
+}
+
+/**
+ * Increments retry count for 5xx errors; drops if exceeded threshold.
+ */
+async function incrementRetryCount(queueId, maxRetries = 5) {
+  const db = await openDatabase();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction([STORE_QUEUE], 'readwrite');
+    const store = tx.objectStore(STORE_QUEUE);
+    const getReq = store.get(queueId);
+    getReq.onsuccess = () => {
+      const record = getReq.result;
+      if (record) {
+        record.retryCount = (record.retryCount || 0) + 1;
+        if (record.retryCount >= maxRetries) {
+          record.status = 'failed_exhausted';
+          record.exhaustedAt = new Date().toISOString();
+        }
+        store.put(record);
+      }
+      resolve(true);
+    };
+    getReq.onerror = () => reject(getReq.error);
+  });
 }
 
 /**

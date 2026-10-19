@@ -246,6 +246,38 @@ function initSchema() {
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
 
+    -- 14. Initial Candidate Skill Tests (Pre-Assessment Screening)
+    CREATE TABLE IF NOT EXISTS candidate_initial_tests (
+      id TEXT PRIMARY KEY,
+      candidate_id TEXT,
+      email TEXT NOT NULL,
+      trade_id TEXT NOT NULL,
+      version TEXT DEFAULT '1.0',
+      score INTEGER NOT NULL,
+      total_questions INTEGER NOT NULL,
+      percentage INTEGER NOT NULL,
+      readiness_level TEXT NOT NULL,
+      recommendation TEXT NOT NULL,
+      answers_json TEXT,
+      evaluations_json TEXT,
+      completed_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
+    -- 15. Candidate Resumes & Verified Credentials Storage
+    CREATE TABLE IF NOT EXISTS candidate_resumes (
+      id TEXT PRIMARY KEY,
+      candidate_id TEXT,
+      user_id TEXT,
+      original_filename TEXT NOT NULL,
+      stored_filename TEXT NOT NULL,
+      file_path TEXT NOT NULL,
+      file_size INTEGER NOT NULL,
+      mime_type TEXT NOT NULL,
+      sha256_hash TEXT NOT NULL,
+      status TEXT DEFAULT 'uploaded' CHECK(status IN ('uploaded', 'verified', 'rejected')),
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
     -- Indexes for high-performance querying
     CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
     CREATE INDEX IF NOT EXISTS idx_assessment_candidate ON assessment_cases(candidate_id);
@@ -256,6 +288,8 @@ function initSchema() {
     CREATE INDEX IF NOT EXISTS idx_reports_hash ON reports(report_hash);
     CREATE INDEX IF NOT EXISTS idx_audit_entity ON audit_events(entity_type, entity_id);
     CREATE INDEX IF NOT EXISTS idx_template_trade ON assessment_templates(trade_id);
+    CREATE INDEX IF NOT EXISTS idx_initial_tests_email ON candidate_initial_tests(email);
+    CREATE INDEX IF NOT EXISTS idx_candidate_resumes ON candidate_resumes(candidate_id);
   `);
 
   // Migrate additional hybrid assessment columns to assessment_cases if not already present
@@ -278,6 +312,31 @@ function initSchema() {
         db.exec(`ALTER TABLE assessment_cases ADD COLUMN ${col.name} ${col.type}`);
       } catch (err) {
         console.warn(`[Database Migration] Warning adding column ${col.name}:`, err.message);
+      }
+    }
+  }
+
+  // Migrate complete resume profile columns to candidate_profiles if not already present
+  const existingCandCols = db.pragma('table_info(candidate_profiles)').map(c => c.name);
+  const candColsToAdd = [
+    { name: 'city', type: 'TEXT' },
+    { name: 'country', type: "TEXT DEFAULT 'India'" },
+    { name: 'education_json', type: 'TEXT' },
+    { name: 'experience_json', type: 'TEXT' },
+    { name: 'skills_json', type: 'TEXT' },
+    { name: 'resume_path', type: 'TEXT' },
+    { name: 'resume_filename', type: 'TEXT' },
+    { name: 'resume_hash', type: 'TEXT' },
+    { name: 'initial_test_score', type: 'INTEGER' },
+    { name: 'initial_test_id', type: 'TEXT' }
+  ];
+
+  for (const col of candColsToAdd) {
+    if (!existingCandCols.includes(col.name)) {
+      try {
+        db.exec(`ALTER TABLE candidate_profiles ADD COLUMN ${col.name} ${col.type}`);
+      } catch (err) {
+        console.warn(`[Database Migration] Warning adding column ${col.name} to candidate_profiles:`, err.message);
       }
     }
   }

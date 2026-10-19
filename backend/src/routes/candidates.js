@@ -114,4 +114,99 @@ router.post('/', (req, res) => {
   }
 });
 
+const path = require('path');
+const fs = require('fs');
+const crypto = require('crypto');
+const multer = require('multer');
+
+const RESUMES_DIR = path.join(__dirname, '..', '..', 'uploads', 'resumes');
+if (!fs.existsSync(RESUMES_DIR)) {
+  fs.mkdirSync(RESUMES_DIR, { recursive: true });
+}
+
+const resumeStorage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, RESUMES_DIR),
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase() || '.pdf';
+    cb(null, `resume-${Date.now()}-${crypto.randomBytes(4).toString('hex')}${ext}`);
+  }
+});
+
+const resumeUpload = multer({
+  storage: resumeStorage,
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+  fileFilter: (req, file, cb) => {
+    const allowed = [
+      'application/pdf',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'text/plain'
+    ];
+    if (allowed.includes(file.mimetype) || file.originalname.match(/\.(pdf|docx|doc|txt)$/i)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Invalid resume file format. Supported formats: PDF, DOCX, DOC.'));
+    }
+  }
+});
+
+/**
+ * POST /api/candidates/upload-resume
+ * Securely uploads and computes SHA-256 integrity hash for candidate resumes.
+ */
+router.post('/upload-resume', (req, res) => {
+  resumeUpload.single('resumeFile')(req, res, (err) => {
+    if (err) {
+      return res.status(400).json({ error: err.message || 'Resume upload failed' });
+    }
+    if (!req.file) {
+      return res.status(400).json({ error: 'No resume file uploaded.' });
+    }
+
+    try {
+      const fileBuffer = fs.readFileSync(req.file.path);
+      const sha256Hash = crypto.createHash('sha256').update(fileBuffer).digest('hex');
+
+      res.status(201).json({
+        message: 'Resume uploaded and verified.',
+        filePath: req.file.path,
+        storedFilename: req.file.filename,
+        originalFilename: req.file.originalname,
+        fileSize: req.file.size,
+        mimeType: req.file.mimetype,
+        sha256Hash
+      });
+    } catch (e) {
+      res.status(500).json({ error: 'Failed to process resume: ' + e.message });
+    }
+  });
+});
+
+/**
+ * GET /api/candidates/:id/resume
+ * Authenticated and authorized resume retrieval.
+ */
+router.get('/:id/resume', authenticateToken, (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Verify candidate ownership or staff authorization
+    if (req.user.role === 'candidate') {
+      const profile = db.prepare('SELECT id FROM candidate_profiles WHERE user_id = ?').get(req.user.id);
+      if (!profile || profile.id !== id) {
+        return res.status(403).json({ error: "Access forbidden: Candidates can only access their own resume." });
+      }
+    }
+
+    const candidate = db.prepare('SELECT resume_path, resume_filename FROM candidate_profiles WHERE id = ?').get(id);
+    if (!candidate || !candidate.resume_path || !fs.existsSync(candidate.resume_path)) {
+      return res.status(404).json({ error: 'Resume file not found for this candidate.' });
+    }
+
+    res.download(candidate.resume_path, candidate.resume_filename || 'Candidate_Resume.pdf');
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to retrieve resume: ' + err.message });
+  }
+});
+
 module.exports = router;

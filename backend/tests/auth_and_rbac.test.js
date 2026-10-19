@@ -122,4 +122,102 @@ describe('Authentication & Server-Enforced RBAC', () => {
     expect(res.statusCode).toBe(401);
     expect(res.body.error).toContain('Authentication token is missing');
   });
+
+  it('Phase 4: should retrieve scrubbed initial skill test for Web Developer without exposing answer keys', async () => {
+    const res = await request(app)
+      .get('/api/assessments/initial-test/web-developer-l5');
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body.tradeId).toBe('web-developer-l5');
+    expect(res.body.questions.length).toBeGreaterThanOrEqual(5);
+
+    // Verify answers are strictly scrubbed
+    res.body.questions.forEach(q => {
+      expect(q.correctAnswer).toBeUndefined();
+      expect(q.explanation).toBeUndefined();
+      expect(q.prompt).toBeDefined();
+      expect(q.options.length).toBe(4);
+    });
+  });
+
+  it('Phase 4: should evaluate initial test submission server-side and calculate readiness level', async () => {
+    const res = await request(app)
+      .post('/api/assessments/initial-test')
+      .send({
+        tradeId: 'web-developer-l5',
+        email: 'new.candidate@skillindia.rpl',
+        answers: {
+          'init-wd-1': 'A',
+          'init-wd-2': 'B',
+          'init-wd-3': 'C',
+          'init-wd-4': 'B',
+          'init-wd-5': 'B'
+        }
+      });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body.score).toBe(5);
+    expect(res.body.percentage).toBe(100);
+    expect(res.body.readinessLevel).toBe('Advanced Practical');
+    expect(res.body.recommendation).toBeDefined();
+    expect(res.body.testId).toBeDefined();
+  });
+
+  it('Phase 3: should upload candidate resume and return SHA-256 hash', async () => {
+    const res = await request(app)
+      .post('/api/candidates/upload-resume')
+      .attach('resumeFile', Buffer.from('%PDF-1.4 Mock Candidate Resume Content for RPL Verification'), 'aarav_resume.pdf');
+
+    expect(res.statusCode).toBe(201);
+    expect(res.body.filePath).toBeDefined();
+    expect(res.body.sha256Hash).toBeDefined();
+    expect(res.body.sha256Hash.length).toBe(64);
+  });
+
+  it('Phase 3: should complete resume-style registration with education, experience, skills, and linked initial test', async () => {
+    const testEmail = `cand.fullresume.${Date.now()}@skillindia.rpl`;
+    const res = await request(app)
+      .post('/api/auth/register')
+      .send({
+        email: testEmail,
+        password: 'Kaushal@2026',
+        fullName: 'Devi Prasad Sharma',
+        phone: '+91 98765 00112',
+        tradeId: 'web-developer-l5',
+        city: 'Bengaluru',
+        state: 'Karnataka',
+        country: 'India',
+        education: {
+          highestQualification: 'B.Tech Computer Science',
+          course: 'Information Technology',
+          institution: 'VTU Karnataka',
+          graduationYear: 2023,
+          vocationalTraining: 'Full Stack Web Development RPL Bootcamp'
+        },
+        experience: {
+          totalYears: 3,
+          employmentStatus: 'Employed Full-time',
+          currentEmployer: 'TechCraft Solutions',
+          jobTitle: 'Frontend Engineer',
+          responsibilities: 'Developing accessible React applications with WCAG AA compliance'
+        },
+        skills: {
+          technicalSkills: ['HTML5', 'CSS3', 'JavaScript ES6+', 'React', 'TailwindCSS'],
+          tools: ['VS Code', 'Git', 'Webpack', 'Figma'],
+          portfolioUrl: 'https://github.com/example/portfolio'
+        },
+        resume: {
+          filePath: '/mock/path/devi_resume.pdf',
+          originalFilename: 'devi_resume.pdf',
+          sha256Hash: 'a'.repeat(64)
+        }
+      });
+
+    expect(res.statusCode).toBe(201);
+    expect(res.body.token).toBeDefined();
+    expect(res.body.candidateProfile).toBeDefined();
+    expect(res.body.candidateProfile.city).toBe('Bengaluru');
+    expect(res.body.candidateProfile.education_json).toBeDefined();
+    expect(res.body.candidateProfile.skills_json).toBeDefined();
+  });
 });

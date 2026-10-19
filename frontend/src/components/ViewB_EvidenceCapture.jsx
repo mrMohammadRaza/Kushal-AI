@@ -24,6 +24,7 @@ import {
   FileAudio,
   Edit3
 } from 'lucide-react';
+import CameraCaptureModal from './CameraCaptureModal';
 
 export default function ViewB_EvidenceCapture({
   lang = 'hi',
@@ -36,6 +37,7 @@ export default function ViewB_EvidenceCapture({
 }) {
   const [photoPreview, setPhotoPreview] = useState(null);
   const [photoFile, setPhotoFile] = useState(null);
+  const [isCameraModalOpen, setIsCameraModalOpen] = useState(false);
   
   // Real Audio Recording & File States
   const [isRecording, setIsRecording] = useState(false);
@@ -405,18 +407,43 @@ export default function ViewB_EvidenceCapture({
                 </p>
               </div>
 
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleLoadSamplePhoto();
-                }}
-                className="btn-3d-amber min-h-[44px] px-4 py-2 rounded-full text-xs font-black flex items-center gap-2 transition-all
-                  bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 border border-amber-300/40"
-              >
-                <Sparkles className="w-4 h-4 text-slate-950" />
-                <span>1-Tap Use Demo Photo ({selectedTrade?.title || 'Evidence'})</span>
-              </button>
+              <div className="flex flex-wrap items-center justify-center gap-2">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsCameraModalOpen(true);
+                  }}
+                  className="btn-3d px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-600/30"
+                >
+                  <Camera className="w-4 h-4" />
+                  <span>Start Live Camera</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    fileInputRef.current?.click();
+                  }}
+                  className="btn-3d px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-700"
+                >
+                  <UploadCloud className="w-4 h-4" />
+                  <span>Upload File</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleLoadSamplePhoto();
+                  }}
+                  className="btn-3d-amber px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-slate-950" />
+                  <span>Sample</span>
+                </button>
+              </div>
             </div>
           )}
         </div>
@@ -628,6 +655,19 @@ export default function ViewB_EvidenceCapture({
           )}
         </motion.button>
       </div>
+
+      <CameraCaptureModal
+        isOpen={isCameraModalOpen}
+        onClose={() => setIsCameraModalOpen(false)}
+        onCapture={(blob, url) => {
+          setPhotoFile(blob);
+          setPhotoPreview(url);
+          setErrorStatus(null);
+        }}
+        title="Candidate Practical Work Evidence"
+        purpose="Captures high-resolution practical work demonstration photo for NSQF competency verification."
+        lang={lang}
+      />
     </motion.section>
   );
 }

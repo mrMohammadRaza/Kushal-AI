@@ -85,11 +85,19 @@ router.post('/register', (req, res) => {
       fullName,
       phone,
       tradeId,
+      city,
+      state,
+      country,
       experienceYears,
       employmentType,
       workLocation,
       educationLevel,
-      primaryLanguage
+      primaryLanguage,
+      education,
+      experience,
+      skills,
+      resume,
+      initialTestId
     } = req.body;
 
     if (!email || !password || !fullName || !tradeId) {
@@ -119,23 +127,76 @@ router.post('/register', (req, res) => {
         VALUES (?, ?, ?, ?, 'candidate', 'center-01', ?)
       `).run(userId, cleanEmail, passwordHash, fullName, phone || '+91 90000 00000');
 
-      // 2. Create Candidate Profile
+      // 2. Prepare Education & Experience
+      const eduLevel = typeof education === 'object' && education?.highestQualification
+        ? education.highestQualification
+        : (educationLevel || 'Graduate / Diploma');
+      
+      const expYears = typeof experience === 'object' && experience?.totalYears
+        ? Number(experience.totalYears) || 0
+        : (Number(experienceYears) || 3);
+
+      const empStatus = typeof experience === 'object' && experience?.employmentStatus
+        ? experience.employmentStatus
+        : (employmentType || 'Practicing Developer');
+
+      // 3. Create Candidate Profile
       db.prepare(`
         INSERT INTO candidate_profiles (
           id, user_id, full_name, phone, trade_id, informal_experience_years,
-          education_level, current_occupation, primary_language, enrolled_date
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, DATE('now'))
+          education_level, current_occupation, primary_language,
+          city, state, country,
+          education_json, experience_json, skills_json,
+          resume_path, resume_filename, resume_hash, initial_test_id,
+          enrolled_date
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, DATE('now'))
       `).run(
         candidateId,
         userId,
         fullName,
         phone || '+91 90000 00000',
         tradeId,
-        Number(experienceYears) || 3,
-        educationLevel || 'Class 8 Pass',
-        employmentType || 'Informal Worker',
-        primaryLanguage || 'hi'
+        expYears,
+        eduLevel,
+        empStatus,
+        primaryLanguage || 'en',
+        city || 'Bengaluru',
+        state || 'Karnataka',
+        country || 'India',
+        education ? JSON.stringify(education) : null,
+        experience ? JSON.stringify(experience) : null,
+        skills ? JSON.stringify(skills) : null,
+        resume?.filePath || null,
+        resume?.originalFilename || null,
+        resume?.sha256Hash || null,
+        initialTestId || null
       );
+
+      // 4. Create Resume Record if provided
+      if (resume?.filePath && resume?.originalFilename) {
+        const resumeId = `res-${Date.now()}-${crypto.randomBytes(3).toString('hex')}`;
+        db.prepare(`
+          INSERT INTO candidate_resumes (
+            id, candidate_id, user_id, original_filename, stored_filename,
+            file_path, file_size, mime_type, sha256_hash, status
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'verified')
+        `).run(
+          resumeId,
+          candidateId,
+          userId,
+          resume.originalFilename,
+          resume.storedFilename || resume.originalFilename,
+          resume.filePath,
+          Number(resume.fileSize) || 0,
+          resume.mimeType || 'application/pdf',
+          resume.sha256Hash || 'hash-pending'
+        );
+      }
+
+      // 5. Link Initial Test if provided
+      if (initialTestId) {
+        db.prepare('UPDATE candidate_initial_tests SET candidate_id = ? WHERE id = ?').run(candidateId, initialTestId);
+      }
     });
 
     tx();
@@ -150,12 +211,12 @@ router.post('/register', (req, res) => {
       userId,
       userRole: 'candidate',
       action: 'CANDIDATE_REGISTRATION',
-      details: { email: cleanEmail, tradeId, candidateId },
+      details: { email: cleanEmail, tradeId, candidateId, hasResume: Boolean(resume?.filePath) },
       ipAddress: req.ip
     });
 
     res.status(201).json({
-      message: "Candidate registered successfully.",
+      message: "Candidate registered successfully with full profile.",
       token,
       user: newUser,
       candidateProfile: newProfile

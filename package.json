@@ -17,8 +17,9 @@
     "dev:frontend": "npm --prefix frontend run dev",
     "dev:ai": "cd ai-service && python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload",
     "test": "npm --prefix backend test",
-    "test:ai": "cd ai-service && .venv\\Scripts\\python -m pytest tests",
-    "test:all": "npm run test && npm run test:ai"
+    "test:ai": "node scripts/test-ai.js",
+    "test:all": "npm run test && npm run test:ai",
+    "seed:demo": "node backend/src/scripts/seedDemo.js"
   },
   "dependencies": {
     "concurrently": "^8.2.2"

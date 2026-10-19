@@ -173,7 +173,18 @@ export function getStoredCandidateSession() {
   }
 }
 
+export function getStoredUser() {
+  try {
+    const raw = localStorage.getItem('kaushal_ai_active_user');
+    return raw ? JSON.parse(raw) : null;
+  } catch (e) {
+    return null;
+  }
+}
+
 export function clearCandidateSession() {
   localStorage.removeItem('kaushal_ai_active_candidate');
+  localStorage.removeItem('kaushal_ai_active_user');
+  localStorage.removeItem('kaushal_ai_auth_token');
   supabase.auth.signOut().catch(() => {});
 }

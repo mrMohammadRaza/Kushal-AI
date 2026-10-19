@@ -3,7 +3,7 @@
 > **Smart India Hackathon (Problem Statement: SIH26242)**  
 > Aligned with National Skills Qualification Framework (NSQF) & National Occupational Standards (NOS)
 
-[![Tests](https://img.shields.io/badge/Automated%20Tests-39%2F39%20Passing-brightgreen.svg)](#-automated-testing--validation)
+[![Tests](https://img.shields.io/badge/Automated%20Tests-43%2F43%20Passing-brightgreen.svg)](#-automated-testing--validation)
 [![Architecture](https://img.shields.io/badge/Architecture-Relational%20SQLite%20%2B%20WAL-blue.svg)](#-system-architecture)
 [![Security](https://img.shields.io/badge/Security-Server--Enforced%20RBAC%20%2B%20SHA--256-orange.svg)](#-security--integrity-framework)
 [![AI Governance](https://img.shields.io/badge/AI%20Governance-Human--in--the--Loop%20(Zero%20Fabrication)-purple.svg)](#-governance--non-fabrication-guarantees)
@@ -211,19 +211,19 @@ The platform includes pre-seeded demo accounts for end-to-end evaluation:
 
 ## 📖 Technical Documentation Index
 
-Detailed technical specifications and design documents are located in the [`docs/`](file:///c:/Users/lenovo/OneDrive/Desktop/kaushal%20ai/docs/) directory:
+Detailed technical specifications and design documents are located in the [`docs/`](./docs/) directory:
 
-- [System Architecture](file:///c:/Users/lenovo/OneDrive/Desktop/kaushal%20ai/docs/ARCHITECTURE.md) — Multi-tier architecture, data flow diagrams, component boundaries.
-- [Technical Design](file:///c:/Users/lenovo/OneDrive/Desktop/kaushal%20ai/docs/TECHNICAL_DESIGN.md) — Technical choices, state transitions, failover mechanisms.
-- [API Reference](file:///c:/Users/lenovo/OneDrive/Desktop/kaushal%20ai/docs/API_REFERENCE.md) — Complete endpoint schemas, request/response payloads, error codes.
-- [Database Schema](file:///c:/Users/lenovo/OneDrive/Desktop/kaushal%20ai/docs/DATABASE_SCHEMA.md) — 12 relational entity models, constraints, and audit tables.
-- [AI Pipeline & Governance](file:///c:/Users/lenovo/OneDrive/Desktop/kaushal%20ai/docs/AI_PIPELINE.md) — Multimodal audit, LangGraph nodes, non-fabrication engine.
-- [Security & Privacy](file:///c:/Users/lenovo/OneDrive/Desktop/kaushal%20ai/docs/SECURITY_AND_PRIVACY.md) — RBAC matrix, token security, SHA-256 evidence integrity.
-- [Testing & Validation](file:///c:/Users/lenovo/OneDrive/Desktop/kaushal%20ai/docs/TESTING.md) — Automated test suite coverage, reproduction commands.
-- [Deployment Guide](file:///c:/Users/lenovo/OneDrive/Desktop/kaushal%20ai/docs/DEPLOYMENT.md) — Production build steps, environment variables, Docker setup.
-- [SIH Jury Demonstration Guide](file:///c:/Users/lenovo/OneDrive/Desktop/kaushal%20ai/docs/DEMO_GUIDE.md) — Step-by-step walkthrough script for hackathon presentations.
-- [Known Limitations & Roadmap](file:///c:/Users/lenovo/OneDrive/Desktop/kaushal%20ai/docs/KNOWN_LIMITATIONS.md) — Honest disclosure of prototype sandboxes and roadmap.
-- [SIH Problem Alignment](file:///c:/Users/lenovo/OneDrive/Desktop/kaushal%20ai/docs/SIH_ALIGNMENT.md) — Direct mapping to Problem Statement SIH26242 criteria.
+- [System Architecture](./docs/ARCHITECTURE.md) — Multi-tier architecture, data flow diagrams, component boundaries.
+- [Technical Design](./docs/TECHNICAL_DESIGN.md) — Technical choices, state transitions, failover mechanisms.
+- [API Reference](./docs/API_REFERENCE.md) — Complete endpoint schemas, request/response payloads, error codes.
+- [Database Schema](./docs/DATABASE_SCHEMA.md) — 15 relational entity models, constraints, and audit tables.
+- [AI Pipeline & Governance](./docs/AI_PIPELINE.md) — Multimodal audit, LangGraph nodes, non-fabrication engine.
+- [Security & Privacy](./docs/SECURITY_AND_PRIVACY.md) — RBAC matrix, token security, SHA-256 evidence integrity.
+- [Testing & Validation](./docs/TESTING.md) — Automated test suite coverage, reproduction commands.
+- [Deployment Guide](./docs/DEPLOYMENT.md) — Production build steps, environment variables, Docker setup.
+- [SIH Jury Demonstration Guide](./docs/DEMO_GUIDE.md) — Step-by-step walkthrough script for hackathon presentations.
+- [Known Limitations & Roadmap](./docs/KNOWN_LIMITATIONS.md) — Honest disclosure of prototype sandboxes and roadmap.
+- [SIH Problem Alignment](./docs/SIH_ALIGNMENT.md) — Direct mapping to Problem Statement SIH26242 criteria.
 
 ---
 

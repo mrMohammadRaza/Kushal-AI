@@ -12,8 +12,10 @@ import AssessmentSuccessScreen from './components/AssessmentSuccessScreen';
 import LivenessGestureChallenge from './components/LivenessGestureChallenge';
 import LoginModal from './components/LoginModal';
 import AccessibilityTestScreen from './components/AccessibilityTestScreen';
+import AuthScreen from './components/AuthScreen';
+import CameraCaptureModal from './components/CameraCaptureModal';
 import { translations } from './data/translations';
-import { getStoredCandidateSession, loginUser } from './utils/supabaseClient';
+import { getStoredCandidateSession, getStoredUser, clearCandidateSession, loginUser } from './utils/supabaseClient';
 import { 
   saveAssessmentOffline, 
   getPendingAssessments, 
@@ -55,6 +57,7 @@ export default function App() {
   const [isBlueprintModalOpen, setIsBlueprintModalOpen] = useState(false);
 
   // Candidate & Auth States
+  const [currentUser, setCurrentUser] = useState(() => getStoredUser());
   const [candidateProfile, setCandidateProfile] = useState(() => {
     return getStoredCandidateSession();
   });
@@ -241,6 +244,7 @@ export default function App() {
     localStorage.removeItem('kaushal_ai_auth_token');
     localStorage.removeItem('kaushal_ai_active_user');
     setCandidateProfile(null);
+    setCurrentUser(null);
     setIsDemoMode(false);
     setActiveAssessment(null);
     setCurrentView('dashboard');
@@ -352,16 +356,50 @@ export default function App() {
   };
 
   // Handle Login & Job Details Confirmation
-  const handleLoginSuccess = (candidate) => {
-    setCandidateProfile(candidate);
+  const handleLoginSuccess = (authData) => {
     setIsLoginModalOpen(false);
-    if (candidate.tradeId === 'assessor' || candidate.role === 'assessor') {
-      setCurrentView('assessor');
-    } else if (candidate.tradeId === 'web-developer-l5') {
-      setCurrentView('dashboard');
-    } else {
-      setCurrentView('dashboard');
+
+    const user = authData?.user || authData;
+    const profile = authData?.candidateProfile;
+
+    if (user) {
+      setCurrentUser(user);
+      if (user.role === 'assessor' || user.role === 'admin' || user.role === 'center_manager' || user.role === 'auditor') {
+        setCurrentView('assessor');
+        return;
+      }
     }
+
+    if (profile) {
+      const cand = {
+        id: profile.id,
+        fullName: profile.full_name,
+        email: user?.email || profile.email,
+        tradeId: profile.trade_id,
+        tradeName: profile.trade_id === 'web-developer-l5' 
+          ? 'Web Developer (NSQF Level 5)' 
+          : (profile.current_occupation || 'Web Developer (NSQF Level 5)'),
+        experienceYears: String(profile.informal_experience_years || 3),
+        city: profile.city,
+        state: profile.state,
+        role: 'candidate'
+      };
+      setCandidateProfile(cand);
+    } else if (user?.role === 'candidate') {
+      const cand = {
+        id: user.id,
+        fullName: user.full_name,
+        email: user.email,
+        tradeId: 'web-developer-l5',
+        tradeName: 'Web Developer (NSQF Level 5)',
+        role: 'candidate'
+      };
+      setCandidateProfile(cand);
+    } else if (authData?.id && authData?.fullName) {
+      setCandidateProfile(authData);
+    }
+
+    setCurrentView('dashboard');
   };
 
   // Complete Hybrid Assessment Submission
@@ -493,6 +531,17 @@ export default function App() {
     setSubmissionData(finalSubmission);
     setCurrentView('completed');
   };
+
+  // Phase 2: Login page must be the first screen displayed to unauthenticated users
+  if (!candidateProfile && !currentUser && !isDemoMode) {
+    return (
+      <AuthScreen
+        onLoginSuccess={handleLoginSuccess}
+        onLaunchDemo={handleLaunchDemo}
+        lang={lang}
+      />
+    );
+  }
 
   return (
     <div className={`min-h-screen flex flex-col font-sans transition-colors duration-300
@@ -706,10 +755,18 @@ export default function App() {
       />
 
       {isLivenessModalOpen && (
-        <LivenessGestureChallenge 
+        <CameraCaptureModal 
+          isOpen={isLivenessModalOpen}
           lang={lang}
-          onVerified={(result) => {
-            setAntiFraudAudit(result);
+          title={isHi ? 'प्रमाणित लाइव कैमरा सत्यापन' : 'Candidate Live Camera Identity Verification'}
+          purpose={isHi ? 'कौशल सत्यापन हेतु वास्तविक उम्मीदवार उपस्थिति सुनिश्चित करने के लिए।' : 'Required for authentic candidate identity evidence verification.'}
+          onCapture={(blob, dataUrl) => {
+            setAntiFraudAudit({
+              livenessVerified: true,
+              verificationStatus: 'CAPTURED_PENDING_ASSESSOR_REVIEW',
+              capturedAt: new Date().toISOString(),
+              photoUrl: dataUrl
+            });
             setIsLivenessModalOpen(false);
           }}
           onClose={() => setIsLivenessModalOpen(false)}

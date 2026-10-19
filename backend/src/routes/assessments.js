@@ -52,6 +52,66 @@ const upload = multer({
   }
 });
 
+const {
+  getPublicInitialTest,
+  evaluateInitialTestSubmission
+} = require('../services/initialTestService');
+
+/**
+ * GET /api/assessments/initial-test/:tradeId
+ * Returns scrubbed question bank for initial skill screening during onboarding.
+ */
+router.get('/initial-test/:tradeId', (req, res) => {
+  try {
+    const { tradeId } = req.params;
+    const test = getPublicInitialTest(tradeId);
+    res.json(test);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to retrieve initial test: " + err.message });
+  }
+});
+
+/**
+ * POST /api/assessments/initial-test
+ * Evaluates candidate responses strictly server-side without exposing answer keys.
+ */
+router.post('/initial-test', optionalAuth, (req, res) => {
+  try {
+    const { tradeId, email, candidateId, answers } = req.body;
+    if (!answers || typeof answers !== 'object') {
+      return res.status(400).json({ error: "Answers object is required." });
+    }
+
+    const candidateEmail = req.user?.email || email || 'guest@candidate.rpl';
+    const cId = req.user?.role === 'candidate' ? (req.user.candidateId || candidateId) : candidateId;
+
+    const result = evaluateInitialTestSubmission({
+      tradeId: tradeId || 'web-developer-l5',
+      email: candidateEmail,
+      candidateId: cId,
+      answers
+    });
+
+    logAuditEvent({
+      entityType: 'initial_test',
+      entityId: result.testId,
+      userId: req.user?.id || null,
+      userRole: req.user?.role || 'candidate',
+      action: 'INITIAL_SKILL_TEST_COMPLETED',
+      details: {
+        tradeId: result.tradeId,
+        percentage: result.percentage,
+        readinessLevel: result.readinessLevel
+      },
+      ipAddress: req.ip
+    });
+
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: "Initial test evaluation failed: " + err.message });
+  }
+});
+
 /**
  * GET /api/assessments
  * List assessments with server-enforced role and center filtering.
