@@ -311,8 +311,17 @@ export default function App() {
         primaryLanguage: "en",
         role: "candidate"
       };
-      await loginUser(candidateUser.email, 'Kaushal@2026');
-      setCandidateProfile(candidateUser);
+      const res = await loginUser(candidateUser.email, 'Kaushal@2026');
+      if (res?.user) setCurrentUser(res.user);
+      if (res?.candidateProfile) {
+        setCandidateProfile({
+          ...candidateUser,
+          id: res.candidateProfile.id,
+          fullName: res.candidateProfile.full_name
+        });
+      } else {
+        setCandidateProfile(candidateUser);
+      }
       setCurrentView('dashboard');
     } else if (roleKey === 'assessor') {
       const assessorUser = {
@@ -328,7 +337,8 @@ export default function App() {
         primaryLanguage: "en",
         role: "assessor"
       };
-      await loginUser(assessorUser.email, 'Kaushal@2026');
+      const res = await loginUser(assessorUser.email, 'Kaushal@2026');
+      if (res?.user) setCurrentUser(res.user);
       setCandidateProfile(assessorUser);
       setCurrentView('assessor');
     } else if (roleKey === 'candidate_electrician') {
@@ -345,8 +355,17 @@ export default function App() {
         primaryLanguage: "hi",
         role: "candidate"
       };
-      await loginUser(elecUser.email, 'Kaushal@2026');
-      setCandidateProfile(elecUser);
+      const res = await loginUser(elecUser.email, 'Kaushal@2026');
+      if (res?.user) setCurrentUser(res.user);
+      if (res?.candidateProfile) {
+        setCandidateProfile({
+          ...elecUser,
+          id: res.candidateProfile.id,
+          fullName: res.candidateProfile.full_name
+        });
+      } else {
+        setCandidateProfile(elecUser);
+      }
       setCurrentView('dashboard');
     }
   };
@@ -399,12 +418,15 @@ export default function App() {
   };
 
   // Complete Hybrid Assessment Submission
-  const handleCompleteHybridSubmission = (result) => {
-    if (result?.assessment) {
-      setActiveAssessment(result.assessment);
+  const handleCompleteHybridSubmission = (assessmentOrResult, maybeRubric) => {
+    const assessment = assessmentOrResult?.assessment || assessmentOrResult;
+    const rubric = maybeRubric || assessmentOrResult?.rubric || (assessment?.rubric_scores_json ? (typeof assessment.rubric_scores_json === 'string' ? JSON.parse(assessment.rubric_scores_json) : assessment.rubric_scores_json) : null);
+
+    if (assessment) {
+      setActiveAssessment(assessment);
       setSubmissionData({
-        ...result.assessment,
-        rubricScores: result.rubric || result.assessment.rubric_scores_json ? (typeof result.assessment.rubric_scores_json === 'string' ? JSON.parse(result.assessment.rubric_scores_json) : result.assessment.rubric_scores_json) : null
+        ...assessment,
+        rubricScores: rubric
       });
     }
     setCurrentView('report');
@@ -495,8 +517,12 @@ export default function App() {
           formData.append('audioViva', data.audioFile);
         }
 
+        const token = localStorage.getItem('kaushal_ai_auth_token');
         const res = await fetch('/api/assessments/evaluate', {
           method: 'POST',
+          headers: {
+            ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+          },
           body: formData
         });
 

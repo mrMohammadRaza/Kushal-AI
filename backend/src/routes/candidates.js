@@ -25,7 +25,7 @@ router.get('/:id', authenticateToken, (req, res) => {
 
     // Candidates can only view their own profile
     if (req.user.role === 'candidate') {
-      const profile = db.prepare('SELECT id FROM candidate_profiles WHERE user_id = ?').get(req.user.id);
+      const profile = db.prepare('SELECT id FROM candidate_profiles WHERE user_id = ? OR id = ?').get(req.user.id, req.user.id);
       if (!profile || profile.id !== id) {
         return res.status(403).json({ error: "Access forbidden: Candidates can only access their own profile." });
       }
@@ -194,7 +194,7 @@ router.get('/:id/resume', authenticateToken, (req, res) => {
 
     // Verify candidate ownership or staff authorization
     if (req.user.role === 'candidate') {
-      const profile = db.prepare('SELECT id FROM candidate_profiles WHERE user_id = ?').get(req.user.id);
+      const profile = db.prepare('SELECT id FROM candidate_profiles WHERE user_id = ? OR id = ?').get(req.user.id, req.user.id);
       if (!profile || profile.id !== id) {
         return res.status(403).json({ error: "Access forbidden: Candidates can only access their own resume." });
       }

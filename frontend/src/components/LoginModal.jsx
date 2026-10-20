@@ -102,6 +102,7 @@ export default function LoginModal({ isOpen, onClose, onLoginSuccess, lang = 'hi
   const handleSelectQuickCandidate = (candidate) => {
     setFullName(candidate.name);
     setEmail(candidate.email);
+    setPassword('Kaushal@2026');
     setTradeId(candidate.tradeId);
     setExperienceYears(candidate.experienceYears);
     setEmploymentType(candidate.employmentType);
@@ -117,11 +118,37 @@ export default function LoginModal({ isOpen, onClose, onLoginSuccess, lang = 'hi
     setLoading(true);
     setErrorMsg(null);
 
+    const cleanEmail = (email || '').trim().toLowerCase();
+    if (!cleanEmail) {
+      setLoading(false);
+      setErrorMsg(isHi ? 'कृपया ईमेल दर्ज करें।' : 'Please enter your email.');
+      return;
+    }
+
+    if (!password) {
+      setLoading(false);
+      setErrorMsg(isHi ? 'कृपया पासवर्ड दर्ज करें।' : 'Please enter your password.');
+      return;
+    }
+
+    if (tab === 'register') {
+      if (!fullName || fullName.trim().length < 2) {
+        setLoading(false);
+        setErrorMsg(isHi ? 'कृपया पूरा नाम दर्ज करें (कम से कम 2 अक्षर)।' : 'Full legal name must be at least 2 characters.');
+        return;
+      }
+      if (password.length < 8) {
+        setLoading(false);
+        setErrorMsg('Password must be at least 8 characters long.');
+        return;
+      }
+    }
+
     const jobDetails = {
-      fullName,
-      email: email || `${fullName.toLowerCase().replace(/\s+/g, '.') || 'candidate'}@skillindia.rpl`,
+      fullName: fullName.trim() || 'Candidate',
+      email: cleanEmail,
       tradeId,
-      tradeName: tradeId.includes('electrician') ? 'Electrician' : (tradeId.includes('solar') ? 'Solar Installer' : (tradeId.includes('automotive') ? 'Mechanic' : 'Plumber')),
+      tradeName: tradeId.includes('electrician') ? 'Electrician' : (tradeId.includes('solar') ? 'Solar Installer' : (tradeId.includes('automotive') ? 'Mechanic' : (tradeId.includes('web-developer') ? 'Web Developer (NSQF Level 5)' : 'Plumber'))),
       experienceYears,
       employmentType,
       workLocation,
@@ -131,58 +158,70 @@ export default function LoginModal({ isOpen, onClose, onLoginSuccess, lang = 'hi
     };
 
     try {
-      // 1. Authenticate with backend API for server-enforced JWT
-      try {
-        const authEndpoint = tab === 'register' ? '/api/auth/register' : '/api/auth/login';
-        const authPayload = tab === 'register' ? {
-          email: jobDetails.email,
-          password,
-          fullName: jobDetails.fullName,
-          tradeId: jobDetails.tradeId,
-          experienceYears: jobDetails.experienceYears,
-          employmentType: jobDetails.employmentType,
-          workLocation: jobDetails.workLocation,
-          primaryLanguage: jobDetails.primaryLanguage
-        } : {
-          email: jobDetails.email,
-          password
+      const authEndpoint = tab === 'register' ? '/api/auth/register' : '/api/auth/login';
+      const authPayload = tab === 'register' ? {
+        email: cleanEmail,
+        password,
+        fullName: jobDetails.fullName,
+        tradeId: jobDetails.tradeId,
+        experienceYears: Number(jobDetails.experienceYears) || 3,
+        employmentType: jobDetails.employmentType,
+        workLocation: jobDetails.workLocation,
+        primaryLanguage: jobDetails.primaryLanguage
+      } : {
+        email: cleanEmail,
+        password
+      };
+
+      const authRes = await fetch(authEndpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(authPayload)
+      });
+
+      const authData = await authRes.json();
+
+      if (!authRes.ok) {
+        throw new Error(authData.error || (tab === 'register' ? 'Registration failed.' : 'Invalid email or password.'));
+      }
+
+      if (authData.token) {
+        localStorage.setItem('kaushal_ai_auth_token', authData.token);
+      }
+      if (authData.user) {
+        localStorage.setItem('kaushal_ai_active_user', JSON.stringify(authData.user));
+      }
+
+      if (authData.candidateProfile) {
+        jobDetails.id = authData.candidateProfile.id;
+        const candidateRecord = {
+          id: authData.candidateProfile.id,
+          fullName: authData.candidateProfile.full_name,
+          email: authData.user?.email || authData.candidateProfile.email || cleanEmail,
+          tradeId: authData.candidateProfile.trade_id,
+          tradeName: authData.candidateProfile.trade_id === 'web-developer-l5' 
+            ? 'Web Developer (NSQF Level 5)' 
+            : (authData.candidateProfile.current_occupation || jobDetails.tradeName),
+          experienceYears: String(authData.candidateProfile.informal_experience_years || jobDetails.experienceYears),
+          workLocation: `${authData.candidateProfile.district || ''}, ${authData.candidateProfile.state || ''}`.replace(/^, /, '') || jobDetails.workLocation,
+          primaryLanguage: authData.candidateProfile.primary_language || jobDetails.primaryLanguage,
+          role: authData.user?.role || 'candidate'
         };
-
-        const authRes = await fetch(authEndpoint, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(authPayload)
-        });
-
-        if (authRes.ok) {
-          const authData = await authRes.json();
-          if (authData.token) {
-            localStorage.setItem('kaushal_ai_auth_token', authData.token);
-          }
-          if (authData.candidateProfile) {
-            jobDetails.id = authData.candidateProfile.id;
-          }
-        }
-      } catch (backendAuthErr) {
-        console.warn('[Backend Auth Notice]:', backendAuthErr.message);
-      }
-
-      // 2. Parallel sync with Supabase client if configured
-      if (tab === 'register') {
-        await registerUser(jobDetails.email, password, jobDetails).catch(() => {});
+        localStorage.setItem('kaushal_ai_active_candidate', JSON.stringify(candidateRecord));
       } else {
-        await loginUser(jobDetails.email, password).catch(() => {});
+        const candidateRecord = {
+          ...jobDetails,
+          id: authData.user?.id || 'cand-session',
+          role: authData.user?.role || 'candidate'
+        };
+        localStorage.setItem('kaushal_ai_active_candidate', JSON.stringify(candidateRecord));
       }
 
-      // 3. Persist active candidate session
-      const savedCandidate = await saveCandidateSession(jobDetails);
       setLoading(false);
-      onLoginSuccess(savedCandidate);
+      onLoginSuccess(authData);
     } catch (err) {
       setLoading(false);
-      setErrorMsg(err.message || 'Authentication error. Continuing with offline session.');
-      const savedCandidate = await saveCandidateSession(jobDetails);
-      onLoginSuccess(savedCandidate);
+      setErrorMsg(err.message || 'Authentication error.');
     }
   };
 

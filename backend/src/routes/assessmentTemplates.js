@@ -36,7 +36,7 @@ router.get('/', optionalAuth, (req, res) => {
 router.get('/:tradeId', optionalAuth, (req, res) => {
   try {
     const { tradeId } = req.params;
-    let template = db.prepare('SELECT * FROM assessment_templates WHERE trade_id = ? AND active = 1 LIMIT 1').get(tradeId);
+    let template = db.prepare('SELECT * FROM assessment_templates WHERE (trade_id = ? OR id = ?) AND active = 1 LIMIT 1').get(tradeId, tradeId);
 
     // Fallback lookup if tradeId is alias
     if (!template && (tradeId === 'web-developer' || tradeId === 'web-developer-l5')) {

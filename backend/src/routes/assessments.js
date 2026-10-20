@@ -673,9 +673,14 @@ router.post('/start', authenticateToken, (req, res) => {
     let candidateId;
 
     if (req.user.role === 'candidate') {
-      const profile = db.prepare('SELECT id FROM candidate_profiles WHERE user_id = ?').get(req.user.id);
+      let profile = db.prepare('SELECT id FROM candidate_profiles WHERE user_id = ? OR id = ?').get(req.user.id, req.user.id);
       if (!profile) {
-        return res.status(403).json({ error: "No candidate profile found for authenticated user." });
+        const autoCandId = `cand-${Date.now().toString().slice(-6)}`;
+        db.prepare(`
+          INSERT INTO candidate_profiles (id, user_id, full_name, trade_id, phone, enrolled_date)
+          VALUES (?, ?, ?, ?, ?, DATE('now'))
+        `).run(autoCandId, req.user.id, req.user.full_name || 'Candidate', tradeId, req.user.phone || '+91 90000 00000');
+        profile = { id: autoCandId };
       }
       candidateId = profile.id;
     } else {

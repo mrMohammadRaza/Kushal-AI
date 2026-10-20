@@ -9,13 +9,13 @@
 
 | Test Suite / Target | Framework | Total Tests | Passed | Failed | Blocked | Execution Time |
 |---|---|---|---|---|---|---|
-| **Backend Auth & RBAC** | Jest | 16 | 16 | 0 | 0 | 8.2s |
-| **Backend Evidence & Scoring** | Jest | 4 | 4 | 0 | 0 | 41.8s |
-| **Backend Reports & Verification** | Jest | 8 | 8 | 0 | 0 | 10.6s |
+| **Backend Auth & RBAC** | Jest | 18 | 18 | 0 | 0 | 8.5s |
+| **Backend Evidence & Scoring** | Jest | 4 | 4 | 0 | 0 | 22.8s |
+| **Backend Reports & Verification** | Jest | 8 | 8 | 0 | 0 | 7.0s |
 | **Backend Web Developer Hybrid Suite**| Jest | 19 | 19 | 0 | 0 | 14.5s |
-| **AI Microservice Pipeline** | Pytest | 5 | 5 | 0 | 0 | 0.67s |
-| **Frontend Production Build** | Vite | 1901 modules | Built | 0 | 0 | 4.14s |
-| **Total Automated Coverage** | — | **52 tests** | **52** | **0** | **0** | **~80s** |
+| **AI Microservice Pipeline** | Pytest | 5 | 5 | 0 | 0 | 0.48s |
+| **Frontend Production Build** | Vite | 1901 modules | Built | 0 | 0 | 6.29s |
+| **Total Automated Coverage** | — | **54 tests** | **54** | **0** | **0** | **~50s** |
 
 ---
 
@@ -48,15 +48,15 @@
 > kaushal-ai-backend@1.0.0 test
 > jest --runInBand --detectOpenHandles --forceExit
 
-PASS tests/evidence_integrity_and_scoring.test.js (41.783 s)
-PASS tests/reports_and_verification.test.js (10.561 s)
-PASS tests/web_developer_hybrid_assessment.test.js (14.502 s)
-PASS tests/auth_and_rbac.test.js (8.214 s)
+PASS tests/auth_and_rbac.test.js
+PASS tests/evidence_integrity_and_scoring.test.js (22.789 s)
+PASS tests/reports_and_verification.test.js (7.007 s)
+PASS tests/web_developer_hybrid_assessment.test.js
 
 Test Suites: 4 passed, 4 total
-Tests:       47 passed, 47 total
+Tests:       49 passed, 49 total
 Snapshots:   0 total
-Time:        55.109 s
+Time:        33.611 s
 Ran all test suites.
 ```
 

@@ -279,4 +279,38 @@ describe('Authentication & Server-Enforced RBAC', () => {
     expect(res.statusCode).toBe(403);
     expect(res.body.error).toContain('Access forbidden');
   });
+
+  it('TEMPLATE: should retrieve assessment template by both trade_id and template id', async () => {
+    const resById = await request(app).get('/api/assessment-templates/tpl-web-developer-v1');
+    expect(resById.statusCode).toBe(200);
+    expect(resById.body.id).toBe('tpl-web-developer-v1');
+    expect(resById.body.tradeId).toBe('web-developer-l5');
+
+    const resByTrade = await request(app).get('/api/assessment-templates/web-developer-l5');
+    expect(resByTrade.statusCode).toBe(200);
+    expect(resByTrade.body.id).toBe('tpl-web-developer-v1');
+  });
+
+  it('AUTO-PROVISIONING: candidate without pre-existing profile auto-provisions profile on starting assessment', async () => {
+    const uniqueUser = `autoprov.${Date.now()}@skillindia.rpl`;
+    const regRes = await request(app)
+      .post('/api/auth/register')
+      .send({
+        email: uniqueUser,
+        password: 'Kaushal@2026',
+        fullName: 'Auto Provision Test',
+        tradeId: 'electrician-l3'
+      });
+    expect(regRes.statusCode).toBe(201);
+    const userToken = regRes.body.token;
+
+    const startRes = await request(app)
+      .post('/api/assessments/start')
+      .set('Authorization', `Bearer ${userToken}`)
+      .send({ tradeId: 'electrician-l3' });
+
+    expect([200, 201]).toContain(startRes.statusCode);
+    expect(startRes.body.assessment?.id).toBeDefined();
+    expect(startRes.body.assessment?.candidate_id).toBeDefined();
+  });
 });

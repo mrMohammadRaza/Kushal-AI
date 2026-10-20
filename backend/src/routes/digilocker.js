@@ -16,7 +16,7 @@ router.post('/push/:assessmentId', authenticateToken, async (req, res) => {
     }
 
     if (req.user.role === 'candidate') {
-      const profile = db.prepare('SELECT id FROM candidate_profiles WHERE user_id = ?').get(req.user.id);
+      const profile = db.prepare('SELECT id FROM candidate_profiles WHERE user_id = ? OR id = ?').get(req.user.id, req.user.id);
       if (!profile || profile.id !== assessment.candidate_id) {
         return res.status(403).json({ error: "Access forbidden: Candidates can only push their own assessment credentials." });
       }

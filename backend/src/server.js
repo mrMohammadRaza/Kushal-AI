@@ -107,7 +107,7 @@ app.get('/uploads/:filename', authenticateToken, (req, res) => {
 
     if (evidence) {
       if (req.user.role === 'candidate') {
-        const profile = db.prepare('SELECT id FROM candidate_profiles WHERE user_id = ?').get(req.user.id);
+        const profile = db.prepare('SELECT id FROM candidate_profiles WHERE user_id = ? OR id = ?').get(req.user.id, req.user.id);
         if (!profile || profile.id !== evidence.candidate_id) {
           return res.status(403).json({ error: "Access forbidden: You cannot view evidence belonging to another candidate." });
         }

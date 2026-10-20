@@ -151,7 +151,7 @@ router.get('/:assessmentId', authenticateToken, (req, res) => {
       FROM assessment_cases a
       JOIN candidate_profiles c ON a.candidate_id = c.id
       JOIN occupations o ON a.trade_id = o.id
-      LEFT JOIN users u ON a.signed_off_by = u.id OR a.assigned_assessor_id = u.id
+      LEFT JOIN users u ON COALESCE(a.signed_off_by, a.assigned_assessor_id) = u.id
       WHERE a.id = ?
     `).get(assessmentId);
 
@@ -161,7 +161,7 @@ router.get('/:assessmentId', authenticateToken, (req, res) => {
 
     // Object-level authorization checks
     if (req.user.role === 'candidate') {
-      const profile = db.prepare('SELECT id FROM candidate_profiles WHERE user_id = ?').get(req.user.id);
+      const profile = db.prepare('SELECT id FROM candidate_profiles WHERE user_id = ? OR id = ?').get(req.user.id, req.user.id);
       if (!profile || profile.id !== assessment.candidate_id) {
         return res.status(403).json({ error: "Access forbidden: Candidates may only view their own assessment reports." });
       }
