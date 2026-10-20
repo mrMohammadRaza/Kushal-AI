@@ -24,9 +24,74 @@ import {
   Code2,
   Check,
   RefreshCw,
-  ExternalLink
+  ExternalLink,
+  Zap
 } from 'lucide-react';
 import CameraCaptureModal from './CameraCaptureModal';
+
+const DEMO_ACCOUNTS = [
+  {
+    name: "Priya Sharma",
+    roleLabel: "Web Developer (NSQF L5)",
+    email: "demo@kushalai.local",
+    password: "KushalDemo@2026!",
+    badge: "★ SIH Lead Demo",
+    badgeColor: "bg-amber-500/20 text-amber-300 border-amber-500/40",
+    tradeId: "web-developer-l5",
+    role: "candidate",
+    isSihDemo: true
+  },
+  {
+    name: "Ramesh Sharma",
+    roleLabel: "Electrician (NSQF L3)",
+    email: "electrician.demo@kushalai.local",
+    password: "Kaushal@2026",
+    badge: "⚡ Electrician",
+    badgeColor: "bg-blue-500/20 text-blue-300 border-blue-500/30",
+    tradeId: "electrician-l3",
+    role: "candidate"
+  },
+  {
+    name: "Mohammad Aslam",
+    roleLabel: "Automotive Tech (NSQF L4)",
+    email: "mechanic.demo@kushalai.local",
+    password: "Kaushal@2026",
+    badge: "🚗 Automotive",
+    badgeColor: "bg-emerald-500/20 text-emerald-300 border-emerald-500/30",
+    tradeId: "automotive-l4",
+    role: "candidate"
+  },
+  {
+    name: "Amit Patel",
+    roleLabel: "Solar PV Installer (NSQF L4)",
+    email: "solar.demo@kushalai.local",
+    password: "Kaushal@2026",
+    badge: "☀️ Solar PV",
+    badgeColor: "bg-orange-500/20 text-orange-300 border-orange-500/30",
+    tradeId: "solar-l4",
+    role: "candidate"
+  },
+  {
+    name: "Rajesh Varma",
+    roleLabel: "Lead Assessor (NCVET)",
+    email: "assessor@kaushal.gov.in",
+    password: "Kaushal@2026",
+    badge: "👨‍🏫 Lead Assessor",
+    badgeColor: "bg-purple-500/20 text-purple-300 border-purple-500/30",
+    tradeId: "assessor",
+    role: "assessor"
+  },
+  {
+    name: "Dr. Sunita Rao",
+    roleLabel: "Director NCVET (Admin)",
+    email: "admin@kaushal.gov.in",
+    password: "Kaushal@2026",
+    badge: "🏛️ Platform Admin",
+    badgeColor: "bg-rose-500/20 text-rose-300 border-rose-500/30",
+    tradeId: "admin",
+    role: "admin"
+  }
+];
 
 export default function AuthScreen({
   onLoginSuccess,
@@ -182,6 +247,67 @@ export default function AuthScreen({
       setResumeFile(null);
     } finally {
       setResumeUploading(false);
+    }
+  };
+
+  // Direct 1-Click Demo Login Handler
+  const handleDirectLogin = async (acc) => {
+    setLoginLoading(true);
+    setLoginError(null);
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: acc.email.trim().toLowerCase(),
+          password: acc.password
+        })
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Authentication failed.');
+      }
+
+      localStorage.setItem('kaushal_ai_auth_token', data.token);
+      if (data.user) {
+        localStorage.setItem('kaushal_ai_active_user', JSON.stringify(data.user));
+      }
+
+      if (data.candidateProfile) {
+        const candidateRecord = {
+          id: data.candidateProfile.id,
+          fullName: data.candidateProfile.full_name,
+          email: data.user?.email || data.candidateProfile.email || acc.email,
+          tradeId: data.candidateProfile.trade_id,
+          tradeName: data.candidateProfile.trade_id === 'web-developer-l5'
+            ? 'Web Developer (NSQF Level 5)'
+            : (data.candidateProfile.current_occupation || acc.roleLabel),
+          experienceYears: String(data.candidateProfile.informal_experience_years || '4'),
+          workLocation: `${data.candidateProfile.district || ''}, ${data.candidateProfile.state || ''}`.replace(/^, /, '') || 'Varanasi, UP',
+          primaryLanguage: data.candidateProfile.primary_language || 'en',
+          role: data.user?.role || 'candidate'
+        };
+        localStorage.setItem('kaushal_ai_active_candidate', JSON.stringify(candidateRecord));
+      } else {
+        const candidateRecord = {
+          id: data.user?.id || 'staff-session',
+          fullName: data.user?.full_name || acc.name,
+          email: acc.email,
+          tradeId: acc.tradeId,
+          tradeName: acc.roleLabel,
+          role: data.user?.role || acc.role
+        };
+        localStorage.setItem('kaushal_ai_active_candidate', JSON.stringify(candidateRecord));
+      }
+
+      if (onLoginSuccess) {
+        onLoginSuccess(data);
+      }
+    } catch (err) {
+      setLoginError(err.message || 'Direct login failed.');
+    } finally {
+      setLoginLoading(false);
     }
   };
 
@@ -378,12 +504,72 @@ export default function AuthScreen({
                 </p>
               </div>
 
-              {loginError && (
-                <div className="p-3.5 rounded-xl bg-red-950/40 border border-red-800/60 text-xs text-red-300 flex items-start gap-2.5">
-                  <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" />
-                  <p>{loginError}</p>
+              {/* ⚡ 1-Click Direct Demo Logins (SIH Video Ready) */}
+              <div className="p-4 rounded-2xl bg-slate-900/90 border border-slate-800 space-y-3 shadow-xl shadow-black/40">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 rounded-lg bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-400">
+                      <Zap className="w-3.5 h-3.5" />
+                    </div>
+                    <div>
+                      <h3 className="text-xs font-black text-white uppercase tracking-wider">
+                        {isHi ? '⚡ त्वरित 1-क्लिक डेमो लॉगिन' : '⚡ 1-Click Direct Demo Logins'}
+                      </h3>
+                      <p className="text-[10px] text-slate-400">
+                        {isHi ? 'वीडियो प्रस्तुति के लिए तुरंत लॉगिन करें' : 'SIH Presentation & Video Recording Ready'}
+                      </p>
+                    </div>
+                  </div>
+                  <span className="text-[10px] font-extrabold text-amber-300 bg-amber-500/10 border border-amber-500/30 px-2 py-0.5 rounded-full">
+                    Preloaded
+                  </span>
                 </div>
-              )}
+
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-1">
+                  {DEMO_ACCOUNTS.map((acc) => (
+                    <button
+                      key={acc.email}
+                      type="button"
+                      disabled={loginLoading}
+                      onClick={() => handleDirectLogin(acc)}
+                      className={`p-2.5 rounded-xl border text-left transition-all flex flex-col justify-between group active:scale-[0.98] ${
+                        acc.isSihDemo
+                          ? 'bg-gradient-to-br from-amber-950/50 via-slate-900 to-blue-950/40 border-amber-400/80 hover:border-amber-300 shadow-md shadow-amber-950/40'
+                          : 'bg-slate-950 border-slate-800 hover:border-blue-500/60 hover:bg-slate-900'
+                      }`}
+                    >
+                      <div>
+                        <div className="flex items-center justify-between mb-1">
+                          <span className={`text-[11px] font-black truncate ${
+                            acc.isSihDemo ? 'text-amber-200 group-hover:text-amber-100 font-extrabold' : 'text-slate-100 group-hover:text-blue-300'
+                          }`}>
+                            {acc.name}
+                          </span>
+                          {acc.isSihDemo && <Sparkles className="w-3 h-3 text-amber-400 flex-shrink-0" />}
+                        </div>
+                        <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold border inline-block mb-1.5 ${acc.badgeColor}`}>
+                          {acc.badge}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between text-[9px] pt-1.5 border-t border-slate-800/80 text-amber-400 font-bold">
+                        <span className="flex items-center gap-0.5">
+                          <Zap className="w-2.5 h-2.5" /> Direct Login
+                        </span>
+                        <ArrowRight className="w-3 h-3 text-slate-500 group-hover:text-amber-400 group-hover:translate-x-0.5 transition-all" />
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Form Divider */}
+              <div className="relative flex items-center justify-center my-4">
+                <div className="border-t border-slate-800 w-full"></div>
+                <span className="bg-slate-900 px-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider relative">
+                  {isHi ? 'या क्रेडेंशियल के साथ लॉगिन करें' : 'Or Sign In with Credentials'}
+                </span>
+                <div className="border-t border-slate-800 w-full"></div>
+              </div>
 
               <form onSubmit={handleLoginSubmit} className="space-y-4">
                 <div>

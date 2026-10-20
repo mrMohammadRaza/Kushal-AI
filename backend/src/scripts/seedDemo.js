@@ -49,8 +49,15 @@ function runDemoSeed(options = {}) {
 
   // 2. Base Platform Staff Users
   const insertUser = db.prepare(`
-    INSERT OR REPLACE INTO users (id, email, password_hash, full_name, role, center_id, phone)
+    INSERT INTO users (id, email, password_hash, full_name, role, center_id, phone)
     VALUES (?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(id) DO UPDATE SET
+      email = excluded.email,
+      password_hash = excluded.password_hash,
+      full_name = excluded.full_name,
+      role = excluded.role,
+      center_id = excluded.center_id,
+      phone = excluded.phone
   `);
 
   insertUser.run('user-admin-01', 'admin@kaushal.gov.in', generalDemoPasswordHash, 'Dr. Sunita Rao (Director NCVET)', 'admin', 'center-01', '+91 98100 00001');
@@ -58,8 +65,8 @@ function runDemoSeed(options = {}) {
   insertUser.run('user-mgr-01', 'manager@kaushal.gov.in', generalDemoPasswordHash, 'Anil Tripathi (Center Superintendent)', 'center_manager', 'center-01', '+91 98300 00003');
   insertUser.run('user-auditor-01', 'auditor@kaushal.gov.in', generalDemoPasswordHash, 'Pooja Iyer (Third-Party Quality Auditor)', 'auditor', 'center-01', '+91 98400 00004');
 
-  // 3. Dedicated SIH Presentation Demo Candidate Account
-  // Email: demo@kushalai.local | Password: KushalDemo@2026!
+  // 3. Dedicated SIH Presentation Demo Candidate Accounts
+  // A. SIH Lead Candidate (Web Developer)
   insertUser.run(
     'user-demo-sih',
     'demo@kushalai.local',
@@ -70,14 +77,66 @@ function runDemoSeed(options = {}) {
     '+91 98765 00000'
   );
 
-  // 4. Candidate Profile for Demo Account
-  db.prepare(`
-    INSERT OR REPLACE INTO candidate_profiles (
+  // B. Electrician Demo Candidate
+  insertUser.run(
+    'user-demo-electrician',
+    'electrician.demo@kushalai.local',
+    generalDemoPasswordHash,
+    'Ramesh Kumar Sharma',
+    'candidate',
+    'center-01',
+    '+91 98765 43210'
+  );
+
+  // C. Automotive Mechanic Demo Candidate
+  insertUser.run(
+    'user-demo-mechanic',
+    'mechanic.demo@kushalai.local',
+    generalDemoPasswordHash,
+    'Mohammad Aslam Ansari',
+    'candidate',
+    'center-01',
+    '+91 98111 22334'
+  );
+
+  // D. Solar PV Installer Demo Candidate
+  insertUser.run(
+    'user-demo-solar',
+    'solar.demo@kushalai.local',
+    generalDemoPasswordHash,
+    'Amit Patel',
+    'candidate',
+    'center-01',
+    '+91 98980 11223'
+  );
+
+  // 4. Candidate Profiles for Demo Accounts
+  const insertCandidateProfile = db.prepare(`
+    INSERT INTO candidate_profiles (
       id, user_id, full_name, age, gender, phone, aadhaar_last4, state, district,
       trade_id, informal_experience_years, education_level, current_occupation,
       primary_language, accessibility_pref, profile_photo, enrolled_date
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(
+    ON CONFLICT(id) DO UPDATE SET
+      user_id = excluded.user_id,
+      full_name = excluded.full_name,
+      age = excluded.age,
+      gender = excluded.gender,
+      phone = excluded.phone,
+      aadhaar_last4 = excluded.aadhaar_last4,
+      state = excluded.state,
+      district = excluded.district,
+      trade_id = excluded.trade_id,
+      informal_experience_years = excluded.informal_experience_years,
+      education_level = excluded.education_level,
+      current_occupation = excluded.current_occupation,
+      primary_language = excluded.primary_language,
+      accessibility_pref = excluded.accessibility_pref,
+      profile_photo = excluded.profile_photo,
+      enrolled_date = excluded.enrolled_date
+  `);
+
+  insertCandidateProfile.run(
     'cand-demo-sih',
     'user-demo-sih',
     'Priya Sharma',
@@ -95,6 +154,66 @@ function runDemoSeed(options = {}) {
     'Standard',
     'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=200&auto=format&fit=crop&q=80',
     '2026-04-10'
+  );
+
+  insertCandidateProfile.run(
+    'cand-demo-electrician',
+    'user-demo-electrician',
+    'Ramesh Kumar Sharma',
+    34,
+    'Male',
+    '+91 98765 43210',
+    '4589',
+    'Uttar Pradesh',
+    'Varanasi',
+    'electrician-l3',
+    6,
+    'Class 10 Pass',
+    'Domestic & Commercial Electrician',
+    'hi',
+    'Audio Voice Guidance',
+    'https://images.unsplash.com/photo-1544717305-2782549b5136?w=200&auto=format&fit=crop&q=80',
+    '2026-03-15'
+  );
+
+  insertCandidateProfile.run(
+    'cand-demo-mechanic',
+    'user-demo-mechanic',
+    'Mohammad Aslam Ansari',
+    29,
+    'Male',
+    '+91 98111 22334',
+    '7812',
+    'Bihar',
+    'Patna',
+    'automotive-l4',
+    8,
+    'Class 10 Pass + ITI Mechanic',
+    'Automotive Diagnostic Technician',
+    'hi',
+    'Standard',
+    'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&auto=format&fit=crop&q=80',
+    '2026-03-20'
+  );
+
+  insertCandidateProfile.run(
+    'cand-demo-solar',
+    'user-demo-solar',
+    'Amit Patel',
+    27,
+    'Male',
+    '+91 98980 11223',
+    '6521',
+    'Gujarat',
+    'Ahmedabad',
+    'solar-l4',
+    5,
+    'Class 12 Pass',
+    'Rooftop Solar PV Installation Specialist',
+    'en',
+    'Standard',
+    'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200&auto=format&fit=crop&q=80',
+    '2026-04-05'
   );
 
   // 5. Realistic Sample Assessment Workflow Case
@@ -171,7 +290,7 @@ async function fetchCandidateProfile(candidateId) {
   };
 
   db.prepare(`
-    INSERT OR REPLACE INTO assessment_cases (
+    INSERT INTO assessment_cases (
       id, candidate_id, trade_id, center_id, assigned_assessor_id,
       status, overall_score, recommendation, current_step, template_id,
       knowledge_submission_json, coding_submission_json, debug_submission_json,
@@ -185,6 +304,17 @@ async function fetchCandidateProfile(candidateId) {
       ?, ?,
       CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
     )
+    ON CONFLICT(id) DO UPDATE SET
+      status = excluded.status,
+      overall_score = excluded.overall_score,
+      recommendation = excluded.recommendation,
+      current_step = excluded.current_step,
+      knowledge_submission_json = excluded.knowledge_submission_json,
+      coding_submission_json = excluded.coding_submission_json,
+      debug_submission_json = excluded.debug_submission_json,
+      test_results_json = excluded.test_results_json,
+      rubric_scores_json = excluded.rubric_scores_json,
+      updated_at = CURRENT_TIMESTAMP
   `).run(
     JSON.stringify(sampleKnowledge),
     sampleCoding,

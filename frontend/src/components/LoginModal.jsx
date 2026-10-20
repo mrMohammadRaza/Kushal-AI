@@ -35,49 +35,53 @@ const PRELOADED_CANDIDATES = [
     companyName: "Sharma Tech Solutions",
     primaryLanguage: "en",
     assistanceNeed: "Standard",
+    role: "candidate",
     isSihDemo: true
   },
   {
-    id: "cand-103",
-    name: "Aarav Sharma",
-    email: "dev.candidate@skillindia.rpl",
-    password: "Kaushal@2026",
-    tradeId: "web-developer-l5",
-    tradeTitle: "Web Developer (NSQF Level 5)",
-    experienceYears: "3",
-    employmentType: "Freelance Frontend & Web Developer",
-    workLocation: "Bengaluru, Karnataka",
-    companyName: "Sharma Dev Labs",
-    primaryLanguage: "en",
-    assistanceNeed: "Standard"
-  },
-  {
-    id: "cand-101",
+    id: "cand-demo-electrician",
     name: "Ramesh Kumar Sharma",
-    email: "ramesh.sharma@skillindia.rpl",
+    email: "electrician.demo@kushalai.local",
     password: "Kaushal@2026",
     tradeId: "electrician-l3",
     tradeTitle: "Assistant Electrician (Level 3)",
     experienceYears: "6",
-    employmentType: "Self-Employed (Local Contractor)",
+    employmentType: "Domestic & Commercial Electrician",
     workLocation: "Varanasi, Uttar Pradesh",
     companyName: "Sharma Electrical Works",
     primaryLanguage: "hi",
-    assistanceNeed: "Audio Voice Guidance"
+    assistanceNeed: "Audio Voice Guidance",
+    role: "candidate"
   },
   {
-    id: "cand-102",
+    id: "cand-demo-mechanic",
     name: "Mohammad Aslam Ansari",
-    email: "aslam.ansari@skillindia.rpl",
+    email: "mechanic.demo@kushalai.local",
     password: "Kaushal@2026",
-    tradeId: "electrician-l4",
-    tradeTitle: "Industrial Electrician (Level 4)",
+    tradeId: "automotive-l4",
+    tradeTitle: "Automotive Diagnostic Technician (Level 4)",
     experienceYears: "8",
-    employmentType: "Industrial Panel Wireman",
+    employmentType: "Automotive Service Technician",
     workLocation: "Patna, Bihar",
-    companyName: "Patna Power Control",
+    companyName: "Patna Auto Service Center",
     primaryLanguage: "hi",
-    assistanceNeed: "None"
+    assistanceNeed: "None",
+    role: "candidate"
+  },
+  {
+    id: "cand-demo-solar",
+    name: "Amit Patel",
+    email: "solar.demo@kushalai.local",
+    password: "Kaushal@2026",
+    tradeId: "solar-l4",
+    tradeTitle: "Solar PV System Installer (Level 4)",
+    experienceYears: "5",
+    employmentType: "Rooftop Solar PV Specialist",
+    workLocation: "Ahmedabad, Gujarat",
+    companyName: "Gujarat Solar Power",
+    primaryLanguage: "en",
+    assistanceNeed: "Standard",
+    role: "candidate"
   },
   {
     id: "user-assessor-01",
@@ -87,11 +91,27 @@ const PRELOADED_CANDIDATES = [
     tradeId: "assessor",
     tradeTitle: "Certified Assessor (NCVET Verified)",
     experienceYears: "10",
-    employmentType: "Lead Assessor",
+    employmentType: "Lead Assessor & Evaluator",
     workLocation: "New Delhi, National Capital",
     companyName: "National Skill Assessment Council",
     primaryLanguage: "en",
-    assistanceNeed: "None"
+    assistanceNeed: "None",
+    role: "assessor"
+  },
+  {
+    id: "user-admin-01",
+    name: "Dr. Sunita Rao (Director NCVET)",
+    email: "admin@kaushal.gov.in",
+    password: "Kaushal@2026",
+    tradeId: "admin",
+    tradeTitle: "Platform Administrator & NCVET Director",
+    experienceYears: "15",
+    employmentType: "Platform Administrator",
+    workLocation: "New Delhi, HQ",
+    companyName: "NCVET / MSDE",
+    primaryLanguage: "en",
+    assistanceNeed: "None",
+    role: "admin"
   }
 ];
 
@@ -130,6 +150,56 @@ export default function LoginModal({ isOpen, onClose, onLoginSuccess, lang = 'hi
     setPrimaryLanguage(candidate.primaryLanguage);
     setAssistanceNeed(candidate.assistanceNeed);
     setTab('login');
+  };
+
+  const handleDirectLogin = async (cand) => {
+    setLoading(true);
+    setErrorMsg(null);
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: cand.email, password: cand.password })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Direct authentication failed.');
+
+      if (data.token) localStorage.setItem('kaushal_ai_auth_token', data.token);
+      if (data.user) localStorage.setItem('kaushal_ai_active_user', JSON.stringify(data.user));
+
+      if (data.candidateProfile) {
+        const candidateRecord = {
+          id: data.candidateProfile.id,
+          fullName: data.candidateProfile.full_name,
+          email: data.user?.email || data.candidateProfile.email || cand.email,
+          tradeId: data.candidateProfile.trade_id,
+          tradeName: data.candidateProfile.trade_id === 'web-developer-l5'
+            ? 'Web Developer (NSQF Level 5)'
+            : (data.candidateProfile.current_occupation || cand.tradeTitle),
+          experienceYears: String(data.candidateProfile.informal_experience_years || cand.experienceYears || '3'),
+          workLocation: `${data.candidateProfile.district || ''}, ${data.candidateProfile.state || ''}`.replace(/^, /, '') || cand.workLocation,
+          primaryLanguage: data.candidateProfile.primary_language || cand.primaryLanguage || 'en',
+          role: data.user?.role || 'candidate'
+        };
+        localStorage.setItem('kaushal_ai_active_candidate', JSON.stringify(candidateRecord));
+      } else {
+        const candidateRecord = {
+          id: data.user?.id || 'cand-session',
+          fullName: data.user?.full_name || cand.name,
+          email: cand.email,
+          tradeId: cand.tradeId,
+          tradeName: cand.tradeTitle,
+          role: data.user?.role || cand.role || 'assessor'
+        };
+        localStorage.setItem('kaushal_ai_active_candidate', JSON.stringify(candidateRecord));
+      }
+
+      setLoading(false);
+      onLoginSuccess(data);
+    } catch (err) {
+      setLoading(false);
+      setErrorMsg(err.message || 'Direct login failed.');
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -338,11 +408,10 @@ export default function LoginModal({ isOpen, onClose, onLoginSuccess, lang = 'hi
               {PRELOADED_CANDIDATES.map((cand) => (
                 <div
                   key={cand.id}
-                  onClick={() => handleSelectQuickCandidate(cand)}
-                  className={`p-3.5 rounded-2xl border cursor-pointer transition-all space-y-1.5 group ${
+                  className={`p-3.5 rounded-2xl border transition-all space-y-2 group ${
                     cand.isSihDemo
-                      ? 'border-amber-400 bg-gradient-to-r from-amber-950/40 via-slate-950 to-blue-950/40 hover:border-amber-300 shadow-lg shadow-amber-950/30'
-                      : 'border-slate-800 bg-slate-950/80 hover:border-blue-500/60 hover:bg-blue-950/30'
+                      ? 'border-amber-400 bg-gradient-to-r from-amber-950/40 via-slate-950 to-blue-950/40 shadow-lg shadow-amber-950/30'
+                      : 'border-slate-800 bg-slate-950/80 hover:border-blue-500/60'
                   }`}
                 >
                   {cand.isSihDemo && (
@@ -352,8 +421,8 @@ export default function LoginModal({ isOpen, onClose, onLoginSuccess, lang = 'hi
                     </div>
                   )}
                   <div className="flex items-center justify-between">
-                    <span className={`font-bold text-xs transition-colors ${
-                      cand.isSihDemo ? 'text-amber-200 group-hover:text-amber-100 font-extrabold' : 'text-white group-hover:text-blue-300'
+                    <span className={`font-bold text-xs ${
+                      cand.isSihDemo ? 'text-amber-200 font-extrabold' : 'text-white'
                     }`}>
                       {cand.name}
                     </span>
@@ -370,6 +439,27 @@ export default function LoginModal({ isOpen, onClose, onLoginSuccess, lang = 'hi
                     <span>{cand.workLocation}</span>
                     <span className="text-emerald-400 font-semibold">{cand.employmentType.slice(0, 24)}...</span>
                   </div>
+                  
+                  {/* Direct 1-Click Login Button */}
+                  <div className="pt-2 flex items-center gap-2">
+                    <button
+                      type="button"
+                      disabled={loading}
+                      onClick={() => handleDirectLogin(cand)}
+                      className="flex-1 py-1.5 px-3 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black text-xs flex items-center justify-center gap-1.5 shadow-md shadow-amber-500/20 transition-all active:scale-[0.98]"
+                    >
+                      <Zap className="w-3.5 h-3.5" />
+                      <span>{loading ? 'Authenticating...' : '⚡ 1-Click Direct Login'}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleSelectQuickCandidate(cand)}
+                      title="Edit or Inspect Details"
+                      className="p-1.5 rounded-xl border border-slate-700 hover:border-slate-500 text-slate-400 hover:text-white transition-colors"
+                    >
+                      <User className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -379,28 +469,43 @@ export default function LoginModal({ isOpen, onClose, onLoginSuccess, lang = 'hi
         {/* Tab: Login / Registration Form */}
         {(tab === 'login' || tab === 'register') && (
           <form onSubmit={handleSubmit} className="p-6 space-y-5">
-            {/* SIH Video Demo Shortcut Banner */}
-            <div className="p-3 rounded-xl bg-gradient-to-r from-amber-500/10 via-blue-500/10 to-slate-900 border border-amber-500/30 flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-amber-400 flex-shrink-0" />
-                <div className="text-xs">
-                  <span className="text-amber-300 font-bold">SIH Demo Account: </span>
-                  <code className="text-amber-200 bg-amber-950/60 px-1 py-0.5 rounded text-[11px]">demo@kushalai.local</code>
+            {/* 1-Click Direct Demo Logins Grid */}
+            <div className="p-3.5 rounded-2xl bg-slate-950 border border-slate-800 space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5 text-xs font-black text-slate-200">
+                  <Zap className="w-3.5 h-3.5 text-amber-400" />
+                  <span>{isHi ? '⚡ त्वरित 1-क्लिक डायरेक्ट लॉगिन:' : '⚡ 1-Click Direct Demo Logins:'}</span>
                 </div>
+                <span className="text-[10px] font-bold text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20">
+                  SIH Video Ready
+                </span>
               </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setEmail('demo@kushalai.local');
-                  setPassword('KushalDemo@2026!');
-                  setFullName('Priya Sharma');
-                  setTradeId('web-developer-l5');
-                }}
-                className="px-2.5 py-1 text-[11px] font-extrabold rounded-lg bg-amber-500 text-slate-950 hover:bg-amber-400 transition-all flex items-center gap-1 shadow-sm"
-              >
-                <Zap className="w-3 h-3" />
-                <span>Auto-Fill Demo</span>
-              </button>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-1">
+                {PRELOADED_CANDIDATES.map((cand) => (
+                  <button
+                    key={cand.id}
+                    type="button"
+                    disabled={loading}
+                    onClick={() => handleDirectLogin(cand)}
+                    className={`p-2 rounded-xl text-left border transition-all flex flex-col justify-between ${
+                      cand.isSihDemo
+                        ? 'bg-amber-950/40 border-amber-500/60 hover:border-amber-400 text-amber-200 shadow-sm'
+                        : 'bg-slate-900 border-slate-800 hover:border-blue-500/60 text-slate-300'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between w-full">
+                      <span className="text-[11px] font-black truncate">{cand.name.split(' ')[0]}</span>
+                      {cand.isSihDemo && <Sparkles className="w-2.5 h-2.5 text-amber-400" />}
+                    </div>
+                    <span className="text-[9px] text-slate-400 truncate mt-0.5">
+                      {cand.tradeTitle.split('(')[0].trim()}
+                    </span>
+                    <span className="text-[9px] text-amber-400 font-bold flex items-center gap-0.5 mt-1">
+                      <Zap className="w-2.5 h-2.5" /> 1-Click Login
+                    </span>
+                  </button>
+                ))}
+              </div>
             </div>
 
             {errorMsg && (
