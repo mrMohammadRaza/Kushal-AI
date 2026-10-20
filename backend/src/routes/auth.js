@@ -105,6 +105,29 @@ router.post('/register', (req, res) => {
     }
 
     const cleanEmail = email.trim().toLowerCase();
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(cleanEmail)) {
+      return res.status(400).json({ error: "Please enter a valid email address." });
+    }
+
+    if (typeof password !== 'string' || password.length < 8) {
+      return res.status(400).json({ error: "Password must be at least 8 characters in length." });
+    }
+
+    const hasLetter = /[a-zA-Z]/.test(password);
+    const hasNumber = /[0-9]/.test(password);
+    if (!hasLetter || !hasNumber) {
+      return res.status(400).json({ error: "Password must contain both letters and at least one numeric digit." });
+    }
+
+    if (typeof fullName !== 'string' || fullName.trim().length < 2) {
+      return res.status(400).json({ error: "Full legal name must be at least 2 characters." });
+    }
+
+    if (phone && !/^\+?[0-9\s\-()]{7,20}$/.test(phone.trim())) {
+      return res.status(400).json({ error: "Please provide a valid phone number format." });
+    }
+
     const existing = db.prepare('SELECT id FROM users WHERE email = ?').get(cleanEmail);
     if (existing) {
       return res.status(409).json({ error: "An account with this email already exists." });
@@ -125,7 +148,7 @@ router.post('/register', (req, res) => {
       db.prepare(`
         INSERT INTO users (id, email, password_hash, full_name, role, center_id, phone)
         VALUES (?, ?, ?, ?, 'candidate', 'center-01', ?)
-      `).run(userId, cleanEmail, passwordHash, fullName, phone || '+91 90000 00000');
+      `).run(userId, cleanEmail, passwordHash, fullName.trim(), phone?.trim() || '+91 90000 00000');
 
       // 2. Prepare Education & Experience
       const eduLevel = typeof education === 'object' && education?.highestQualification
@@ -153,16 +176,16 @@ router.post('/register', (req, res) => {
       `).run(
         candidateId,
         userId,
-        fullName,
-        phone || '+91 90000 00000',
+        fullName.trim(),
+        phone?.trim() || '+91 90000 00000',
         tradeId,
         expYears,
         eduLevel,
         empStatus,
         primaryLanguage || 'en',
-        city || 'Bengaluru',
-        state || 'Karnataka',
-        country || 'India',
+        city?.trim() || 'Bengaluru',
+        state?.trim() || 'Karnataka',
+        country?.trim() || 'India',
         education ? JSON.stringify(education) : null,
         experience ? JSON.stringify(experience) : null,
         skills ? JSON.stringify(skills) : null,
@@ -179,7 +202,7 @@ router.post('/register', (req, res) => {
           INSERT INTO candidate_resumes (
             id, candidate_id, user_id, original_filename, stored_filename,
             file_path, file_size, mime_type, sha256_hash, status
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'verified')
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'uploaded')
         `).run(
           resumeId,
           candidateId,

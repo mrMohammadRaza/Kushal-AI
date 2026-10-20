@@ -105,6 +105,11 @@ async function pushCertificateToDigiLocker(assessmentId) {
     throw new Error(`Assessment ${assessmentId} not found.`);
   }
 
+  const validApprovedStatuses = ['certified_approved', 'approved', 'verified_by_assessor'];
+  if (!assessment.signed_off || !validApprovedStatuses.includes(assessment.status)) {
+    throw new Error(`Cannot issue DigiLocker credential: Assessment ${assessmentId} has not been approved and signed off by an authorized assessor (Current status: ${assessment.status}).`);
+  }
+
   const payload = generateDigiLockerCertificatePayload({
     assessmentId,
     candidateName: assessment.candidate_name,

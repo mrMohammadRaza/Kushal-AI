@@ -220,4 +220,63 @@ describe('Authentication & Server-Enforced RBAC', () => {
     expect(res.body.candidateProfile.education_json).toBeDefined();
     expect(res.body.candidateProfile.skills_json).toBeDefined();
   });
+
+  it('VALIDATION: should reject registration with invalid email format', async () => {
+    const res = await request(app)
+      .post('/api/auth/register')
+      .send({
+        email: 'not-an-email',
+        password: 'Password123',
+        fullName: 'Valid Name',
+        phone: '+91 99887 76655',
+        tradeId: 'web-developer-l5'
+      });
+
+    expect(res.statusCode).toBe(400);
+    expect(res.body.error).toContain('valid email address');
+  });
+
+  it('VALIDATION: should reject registration with password under 8 characters', async () => {
+    const res = await request(app)
+      .post('/api/auth/register')
+      .send({
+        email: `shortpass.${Date.now()}@test.com`,
+        password: 'short',
+        fullName: 'Valid Name',
+        phone: '+91 99887 76655',
+        tradeId: 'web-developer-l5'
+      });
+
+    expect(res.statusCode).toBe(400);
+    expect(res.body.error).toContain('at least 8 characters');
+  });
+
+  it('VALIDATION: should reject registration with empty or single-character full name', async () => {
+    const res = await request(app)
+      .post('/api/auth/register')
+      .send({
+        email: `noname.${Date.now()}@test.com`,
+        password: 'ValidPassword123',
+        fullName: 'A',
+        phone: '+91 99887 76655',
+        tradeId: 'web-developer-l5'
+      });
+
+    expect(res.statusCode).toBe(400);
+    expect(res.body.error).toContain('Full legal name must be at least 2 characters');
+  });
+
+  it('RBAC: candidate role cannot create candidate profiles via POST /api/candidates', async () => {
+    const res = await request(app)
+      .post('/api/candidates')
+      .set('Authorization', `Bearer ${candidateToken}`)
+      .send({
+        fullName: 'Unauthorized Creation',
+        email: `unauth.${Date.now()}@test.com`,
+        tradeId: 'web-developer-l5'
+      });
+
+    expect(res.statusCode).toBe(403);
+    expect(res.body.error).toContain('Access forbidden');
+  });
 });

@@ -125,7 +125,60 @@ export default function HybridTestEngine({
     }
   }, [htmlCode, cssCode, jsCode, codeTab, currentStage]);
 
-  // Voice recording timer simulation
+  // Authentic Audio Recording with MediaRecorder
+  const mediaRecorderRef = useRef(null);
+  const audioChunksRef = useRef([]);
+  const audioStreamRef = useRef(null);
+
+  const startVoiceRecording = async () => {
+    try {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        alert("Your browser does not support audio recording. Please attach a file instead.");
+        return;
+      }
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      audioStreamRef.current = stream;
+      audioChunksRef.current = [];
+
+      const recorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = recorder;
+
+      recorder.ondataavailable = (e) => {
+        if (e.data && e.data.size > 0) {
+          audioChunksRef.current.push(e.data);
+        }
+      };
+
+      recorder.onstop = () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        setRecordedVoiceAudio(audioBlob);
+        if (audioStreamRef.current) {
+          audioStreamRef.current.getTracks().forEach(t => t.stop());
+          audioStreamRef.current = null;
+        }
+      };
+
+      recorder.start(250);
+      setIsRecordingVoice(true);
+      setVoiceSeconds(0);
+    } catch (err) {
+      console.warn("Microphone access error:", err);
+      alert("Unable to access microphone: " + (err.message || "Permission denied"));
+    }
+  };
+
+  const stopVoiceRecording = () => {
+    if (mediaRecorderRef.current && isRecordingVoice) {
+      try {
+        mediaRecorderRef.current.stop();
+      } catch (e) {
+        console.warn("Recorder stop error:", e);
+      }
+      setIsRecordingVoice(false);
+    }
+  };
+
+  // Recording timer
   useEffect(() => {
     let interval = null;
     if (isRecordingVoice) {
@@ -135,6 +188,15 @@ export default function HybridTestEngine({
     }
     return () => clearInterval(interval);
   }, [isRecordingVoice]);
+
+  // Clean up media tracks on unmount
+  useEffect(() => {
+    return () => {
+      if (audioStreamRef.current) {
+        audioStreamRef.current.getTracks().forEach(t => t.stop());
+      }
+    };
+  }, []);
 
   // Auto-save draft progress to server
   const saveDraftProgress = async () => {
@@ -303,7 +365,7 @@ export default function HybridTestEngine({
         formData.append('practicalImage', selectedPhoto);
       }
       if (recordedVoiceAudio) {
-        formData.append('audioViva', recordedVoiceAudio);
+        formData.append('audioViva', recordedVoiceAudio, 'viva-explanation.webm');
       }
 
       const res = await fetch(`/api/assessments/${assessmentId}/submit-hybrid`, {
@@ -921,7 +983,7 @@ export default function HybridTestEngine({
               <div className="flex items-center gap-3">
                 <button
                   type="button"
-                  onClick={() => setIsRecordingVoice(!isRecordingVoice)}
+                  onClick={isRecordingVoice ? stopVoiceRecording : startVoiceRecording}
                   className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all ${
                     isRecordingVoice 
                       ? 'bg-rose-600 text-white animate-pulse' 

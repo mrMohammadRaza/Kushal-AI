@@ -138,8 +138,9 @@ router.get('/download/:assessmentId', authenticateToken, (req, res) => {
 /**
  * GET /api/reports/:assessmentId
  * Retrieve structured competency report with rubric scores, automated test outcomes, and integrity check.
+ * Protected: Object-level authorization enforced for candidate, assigned assessor, center manager, and admin.
  */
-router.get('/:assessmentId', (req, res) => {
+router.get('/:assessmentId', authenticateToken, (req, res) => {
   try {
     const { assessmentId } = req.params;
 
@@ -156,6 +157,22 @@ router.get('/:assessmentId', (req, res) => {
 
     if (!assessment) {
       return res.status(404).json({ error: "Assessment report not found." });
+    }
+
+    // Object-level authorization checks
+    if (req.user.role === 'candidate') {
+      const profile = db.prepare('SELECT id FROM candidate_profiles WHERE user_id = ?').get(req.user.id);
+      if (!profile || profile.id !== assessment.candidate_id) {
+        return res.status(403).json({ error: "Access forbidden: Candidates may only view their own assessment reports." });
+      }
+    } else if (req.user.role === 'assessor') {
+      if (assessment.assigned_assessor_id !== req.user.id && assessment.signed_off_by !== req.user.id) {
+        return res.status(403).json({ error: "Access forbidden: Assessor is not assigned to this candidate assessment." });
+      }
+    } else if (req.user.role === 'center_manager') {
+      if (assessment.center_id !== req.user.center_id) {
+        return res.status(403).json({ error: "Access forbidden: Assessment report does not belong to your center." });
+      }
     }
 
     const report = db.prepare('SELECT * FROM reports WHERE assessment_id = ? ORDER BY released_at DESC LIMIT 1').get(assessmentId);
@@ -182,12 +199,12 @@ router.get('/:assessmentId', (req, res) => {
       },
       verificationStatus,
       lifecycleStatus: assessment.signed_off ? 'Finalized' : (assessment.status === 'assessor_review_required' ? 'Under Review' : assessment.status),
-      overallScore: assessment.overall_score || 0,
+      overallScore: assessment.overall_score !== null && assessment.overall_score !== undefined ? assessment.overall_score : null,
       rubricScores: assessment.rubric_scores_json ? JSON.parse(assessment.rubric_scores_json) : null,
       automatedTests: assessment.test_results_json ? JSON.parse(assessment.test_results_json) : null,
       assessorRemarks: assessment.assessor_notes || null,
       assessorName: assessment.assessor_name || "Lead Assessor",
-      reportIntegritySha256: report ? report.report_hash : (assessment.signed_off ? 'verified_sha256_hash_digest' : null),
+      reportIntegritySha256: report ? report.report_hash : null,
       statutoryDisclaimer: "This skill assessment report certifies demonstrated practical competencies evaluated via Kaushal AI's hybrid test framework and does not confer official statutory qualifications unless awarded by an authorized body."
     });
   } catch (err) {

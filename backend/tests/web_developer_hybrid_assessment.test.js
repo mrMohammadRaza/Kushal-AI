@@ -236,6 +236,30 @@ describe('Web Developer Hybrid Skill Verification Test Suite', () => {
       expect(res.body.status).toBe('failed');
     });
 
+    it('SANDBOX SECURITY: should reject execution of malicious code with process/constructor escape vectors', async () => {
+      const maliciousCode = `
+        let tasks = [];
+        let currentFilter = 'all';
+        function validateInput() {
+          const fs = require('fs');
+          return null;
+        }
+        function addTask() { return true; }
+        function toggleTask() {}
+        function setFilter() {}
+        function deleteTask() {}
+      `;
+
+      const res = await request(app)
+        .post(`/api/assessments/${assessmentId}/run-code-tests`)
+        .set('Authorization', `Bearer ${candidateToken}`)
+        .send({ javascript: maliciousCode });
+
+      expect(res.statusCode).toBe(200);
+      expect(res.body.status).toBe('failed');
+      expect(res.body.error).toContain('Security policy violation');
+    });
+
     it('should commit practical coding task submission and advance to debugging stage', async () => {
       const validCode = `
         let tasks = [
@@ -371,7 +395,9 @@ describe('Web Developer Hybrid Skill Verification Test Suite', () => {
     });
 
     it('should verify finalized report integrity via public reference endpoint', async () => {
-      const res = await request(app).get(`/api/reports/${assessmentId}`);
+      const res = await request(app)
+        .get(`/api/reports/${assessmentId}`)
+        .set('Authorization', `Bearer ${candidateToken}`);
       expect(res.statusCode).toBe(200);
       expect(res.body.assessmentId).toBe(assessmentId);
       expect(res.body.verificationStatus).toBe('Verified');

@@ -56,6 +56,7 @@ export default function AuthScreen({
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [phone, setPhone] = useState('');
   const [city, setCity] = useState('');
   const [stateName, setStateName] = useState('Karnataka');
@@ -235,14 +236,23 @@ export default function AuthScreen({
       return;
     }
 
+    if (!password || password.length < 8) {
+      setRegError('Password is required and must be at least 8 characters long.');
+      return;
+    }
+    if (!phone.trim()) {
+      setRegError('Mobile number is required.');
+      return;
+    }
+
     setRegLoading(true);
 
     try {
       const payload = {
         fullName: fullName.trim(),
         email: email.trim().toLowerCase(),
-        password: password || 'Kaushal@2026',
-        phone: phone.trim() || '+91 90000 00000',
+        password: password,
+        phone: phone.trim(),
         tradeId: selectedTradeId,
         city: city.trim(),
         state: stateName,
@@ -612,13 +622,27 @@ export default function AuthScreen({
 
                   <div>
                     <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                      Password (min 8 characters) *
+                      Password (min 8 alphanumeric characters) *
                     </label>
                     <input
                       type="password"
                       required
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
+                      placeholder="••••••••••••"
+                      className="w-full px-4 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-slate-100 text-sm focus:outline-none focus:border-blue-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                      Confirm Password *
+                    </label>
+                    <input
+                      type="password"
+                      required
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
                       placeholder="••••••••••••"
                       className="w-full px-4 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-slate-100 text-sm focus:outline-none focus:border-blue-500"
                     />
@@ -1083,7 +1107,7 @@ export default function AuthScreen({
                     <div className="p-4 rounded-2xl bg-emerald-950/30 border border-emerald-500/30 text-xs text-emerald-300 space-y-1.5">
                       <div className="flex items-center gap-2 text-emerald-200 font-bold">
                         <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                        <span>Resume Verified & Cryptographically Hashed</span>
+                        <span>Resume Uploaded & Cryptographically Hashed (Awaiting Assessor Review)</span>
                       </div>
                       <p className="text-[11px] text-slate-400">File: {resumeData.originalFilename} ({(resumeData.fileSize / 1024).toFixed(1)} KB)</p>
                       <p className="text-[10px] font-mono text-emerald-400 break-all">
@@ -1147,9 +1171,32 @@ export default function AuthScreen({
                   <button
                     type="button"
                     onClick={() => {
-                      if (regStep === 1 && (!fullName.trim() || !email.trim())) {
-                        setRegError('Please provide your full legal name and email address.');
-                        return;
+                      if (regStep === 1) {
+                        if (!fullName.trim() || fullName.trim().length < 2) {
+                          setRegError('Please provide your full legal name (at least 2 characters).');
+                          return;
+                        }
+                        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                        if (!emailRegex.test(email.trim())) {
+                          setRegError('Please provide a valid email address.');
+                          return;
+                        }
+                        if (!phone.trim() || phone.trim().length < 7) {
+                          setRegError('Please provide a valid mobile number.');
+                          return;
+                        }
+                        if (!password || password.length < 8) {
+                          setRegError('Password must be at least 8 alphanumeric characters.');
+                          return;
+                        }
+                        if (password !== confirmPassword) {
+                          setRegError('Passwords do not match. Please verify your password confirmation.');
+                          return;
+                        }
+                        if (!city.trim() || !stateName.trim()) {
+                          setRegError('Please provide your city and state.');
+                          return;
+                        }
                       }
                       setRegError(null);
                       setRegStep(prev => prev + 1);

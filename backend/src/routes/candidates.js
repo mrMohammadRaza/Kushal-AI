@@ -47,8 +47,8 @@ router.get('/:id', authenticateToken, (req, res) => {
   }
 });
 
-// Register new informal candidate for RPL assessment
-router.post('/', (req, res) => {
+// Register new informal candidate for RPL assessment (Authorized staff only)
+router.post('/', authenticateToken, requireRole(['assessor', 'center_manager', 'admin']), (req, res) => {
   try {
     const {
       name,
@@ -104,6 +104,8 @@ router.post('/', (req, res) => {
     logAuditEvent({
       entityType: 'candidate',
       entityId: candidateId,
+      userId: req.user.id,
+      userRole: req.user.role,
       action: 'CANDIDATE_PROFILE_CREATED',
       details: { name, tradeId }
     });
@@ -168,7 +170,7 @@ router.post('/upload-resume', (req, res) => {
       const sha256Hash = crypto.createHash('sha256').update(fileBuffer).digest('hex');
 
       res.status(201).json({
-        message: 'Resume uploaded and verified.',
+        message: 'Resume uploaded and integrity hash computed.',
         filePath: req.file.path,
         storedFilename: req.file.filename,
         originalFilename: req.file.originalname,
@@ -195,6 +197,24 @@ router.get('/:id/resume', authenticateToken, (req, res) => {
       const profile = db.prepare('SELECT id FROM candidate_profiles WHERE user_id = ?').get(req.user.id);
       if (!profile || profile.id !== id) {
         return res.status(403).json({ error: "Access forbidden: Candidates can only access their own resume." });
+      }
+    } else if (req.user.role === 'assessor') {
+      // Check if assessor is assigned to any assessment for this candidate
+      const assigned = db.prepare(`
+        SELECT id FROM assessment_cases 
+        WHERE candidate_id = ? AND assigned_assessor_id = ?
+      `).get(id, req.user.id);
+      if (!assigned) {
+        return res.status(403).json({ error: "Access forbidden: Assessor is not assigned to this candidate." });
+      }
+    } else if (req.user.role === 'center_manager') {
+      // Check if candidate belongs to center manager's center
+      const inCenter = db.prepare(`
+        SELECT id FROM assessment_cases
+        WHERE candidate_id = ? AND center_id = ?
+      `).get(id, req.user.center_id || 'center-01');
+      if (!inCenter) {
+        return res.status(403).json({ error: "Access forbidden: Candidate does not have assessments in your center." });
       }
     }
 

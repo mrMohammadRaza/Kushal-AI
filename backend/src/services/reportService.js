@@ -109,22 +109,29 @@ async function generateAssessmentReport(assessmentId, assessorUser) {
        .text('ASSESSOR SCORE', 475, yPos + 6);
     yPos += 22;
 
-    const displayCompetencies = competencies.length > 0 ? competencies.slice(0, 8) : [
-      { nos_code: 'ELE/N1401', pc_code: 'PC1.1', criteria_text: 'Inspection of tools & PPE adherence', evidence_status: 'verified_by_assessor', assessor_score: 85 },
-      { nos_code: 'ELE/N1402', pc_code: 'PC2.1', criteria_text: 'Wiring installation & connection torque', evidence_status: 'verified_by_assessor', assessor_score: 80 },
-      { nos_code: 'ELE/N1403', pc_code: 'PC3.1', criteria_text: 'Earthing continuity & insulation test', evidence_status: 'partially_supported', assessor_score: 75 },
-      { nos_code: 'ELE/N9901', pc_code: 'PC4.1', criteria_text: 'Workplace health, safety & de-energization', evidence_status: 'verified_by_assessor', assessor_score: 90 }
-    ];
+    if (competencies.length > 0) {
+      competencies.slice(0, 10).forEach((comp) => {
+        doc.rect(40, yPos, 515, 24).strokeColor('#e2e8f0').stroke();
+        const scoreDisplay = comp.assessor_score !== null && comp.assessor_score !== undefined
+          ? `${comp.assessor_score}%`
+          : (comp.ai_score !== null && comp.ai_score !== undefined ? `${comp.ai_score}% (AI)` : 'Unscored');
 
-    displayCompetencies.forEach((comp) => {
+        doc.fillColor('#334155').fontSize(8).font('Helvetica')
+           .text(comp.nos_code || 'NOS', 45, yPos + 7)
+           .text((comp.criteria_text || comp.pc_code || '').slice(0, 50), 115, yPos + 7)
+           .text((comp.evidence_status || 'not_assessed').replace(/_/g, ' '), 370, yPos + 7)
+           .text(scoreDisplay, 485, yPos + 7);
+        yPos += 24;
+      });
+    } else {
       doc.rect(40, yPos, 515, 24).strokeColor('#e2e8f0').stroke();
-      doc.fillColor('#334155').fontSize(8).font('Helvetica')
-         .text(comp.nos_code || 'NOS', 45, yPos + 7)
-         .text((comp.criteria_text || comp.pc_code || '').slice(0, 50), 115, yPos + 7)
-         .text(comp.evidence_status.replace(/_/g, ' '), 370, yPos + 7)
-         .text(`${comp.assessor_score || comp.ai_score || 80}%`, 485, yPos + 7);
+      doc.fillColor('#64748b').fontSize(8).font('Helvetica-Oblique')
+         .text('—', 45, yPos + 7)
+         .text('No granular competency criteria recorded for this assessment case.', 115, yPos + 7)
+         .text('not assessed', 370, yPos + 7)
+         .text('N/A', 485, yPos + 7);
       yPos += 24;
-    });
+    }
 
     // Evidence Audit Section
     yPos += 15;
@@ -140,7 +147,7 @@ async function generateAssessmentReport(assessmentId, assessorUser) {
       });
     } else {
       doc.fontSize(8).font('Helvetica-Oblique').fillColor('#64748b')
-         .text('• Multimodal evidence verified by lead assessor via secure portal.', 45, yPos);
+         .text('• No physical or media evidence files were submitted for this assessment.', 45, yPos);
       yPos += 14;
     }
 
@@ -150,13 +157,17 @@ async function generateAssessmentReport(assessmentId, assessorUser) {
     doc.fillColor('#0f172a').fontSize(10).font('Helvetica-Bold')
        .text('LEAD ASSESSOR SIGN-OFF & FINAL VERDICT', 50, yPos + 10);
     
+    const formattedScore = assessment.overall_score !== null && assessment.overall_score !== undefined
+      ? `${assessment.overall_score}%`
+      : 'Unscored / Under Review';
+
     doc.fontSize(9).font('Helvetica').fillColor('#1e293b')
-       .text(`Verdict: ${assessment.status.toUpperCase()}`, 50, yPos + 26)
-       .text(`Overall Verified Score: ${assessment.overall_score || 84}%`, 50, yPos + 40)
-       .text(`Assessor Remarks: "${assessment.assessor_notes || 'Competencies verified against NSQF criteria.'}"`, 50, yPos + 54);
+       .text(`Verdict: ${(assessment.status || 'DRAFT').toUpperCase()}`, 50, yPos + 26)
+       .text(`Overall Verified Score: ${formattedScore}`, 50, yPos + 40)
+       .text(`Assessor Remarks: "${assessment.assessor_notes || 'Competencies evaluated against NSQF criteria.'}"`, 50, yPos + 54);
 
     doc.fillColor('#0f172a').fontSize(9).font('Helvetica-Bold')
-       .text(`Certified Assessor: ${assessorUser?.full_name || 'Rajesh Varma (Certified Electrical Assessor)'}`, 300, yPos + 26)
+       .text(`Certified Assessor: ${assessorUser?.full_name || 'Assessor Assigned'}`, 300, yPos + 26)
        .text(`Sign-Off Digest: ${reportHash.slice(0, 16).toUpperCase()}`, 300, yPos + 40)
        .text(`Verification URL: /api/reports/verify/${reportHash.slice(0, 12)}...`, 300, yPos + 54);
 

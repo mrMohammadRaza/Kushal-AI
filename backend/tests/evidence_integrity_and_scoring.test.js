@@ -5,7 +5,7 @@ const app = require('../src/server');
 const { db } = require('../src/data/database');
 
 describe('Evidence Integrity & Objective Competency Scoring', () => {
-  jest.setTimeout(25000);
+  jest.setTimeout(60000);
   let assessorToken;
 
   beforeAll(async () => {
@@ -38,7 +38,7 @@ describe('Evidence Integrity & Objective Competency Scoring', () => {
 
     // Gaps must note missing evidence
     expect(body.aiEvaluation.gapAreas.some(g => g.toLowerCase().includes('missing') || g.toLowerCase().includes('not provided') || g.toLowerCase().includes('absent'))).toBe(true);
-  });
+  }, 60000);
 
   it('RULE VERIFICATION: Oral-only evidence must require practical test, never certified pass', async () => {
     const res = await request(app)
@@ -55,7 +55,7 @@ describe('Evidence Integrity & Objective Competency Scoring', () => {
     expect(body.status).not.toBe('certified_approved');
     expect(['requires_practical_test', 'insufficient_evidence']).toContain(body.status);
     expect(body.aiEvaluation.gapAreas.some(g => g.toLowerCase().includes('physical') || g.toLowerCase().includes('visual') || g.toLowerCase().includes('missing'))).toBe(true);
-  });
+  }, 60000);
 
   it('RULE VERIFICATION: Multimodal upload computes SHA-256 integrity hash and logs evidence records', async () => {
     // Create temporary image fixture

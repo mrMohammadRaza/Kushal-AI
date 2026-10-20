@@ -1,10 +1,10 @@
 import { createClient } from '@supabase/supabase-js';
 
 function createSafeSupabaseClient() {
-  const url = import.meta.env.VITE_SUPABASE_URL || 'https://tmdrouofryymaqvxfhrx.supabase.co';
+  const url = import.meta.env.VITE_SUPABASE_URL || '';
   const key = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-  if (key && typeof key === 'string' && key.trim().length > 0) {
+  if (url && key && typeof key === 'string' && key.trim().length > 0) {
     try {
       return createClient(url, key.trim(), {
         auth: {

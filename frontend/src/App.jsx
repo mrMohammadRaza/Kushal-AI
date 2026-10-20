@@ -122,24 +122,27 @@ export default function App() {
   // Fetch Assessment Template & Authenticate Default Token on Mount
   useEffect(() => {
     async function initSessionAndTemplate() {
-      // 1. If a candidate profile exists but auth token is missing, attempt auto-login
+      // 1. If an auth token exists, validate it via /api/auth/me
       let token = localStorage.getItem('kaushal_ai_auth_token');
-      if (!token && candidateProfile?.email) {
+      if (token) {
         try {
-          const authRes = await fetch('/api/auth/login', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email: candidateProfile.email, password: 'Kaushal@2026' })
+          const meRes = await fetch('/api/auth/me', {
+            headers: { 'Authorization': `Bearer ${token}` }
           });
-          if (authRes.ok) {
-            const data = await authRes.json();
-            if (data.token) {
-              localStorage.setItem('kaushal_ai_auth_token', data.token);
-              token = data.token;
+          if (meRes.ok) {
+            const meData = await meRes.json();
+            if (meData?.user) {
+              setCurrentUser(meData.user);
             }
+          } else if (meRes.status === 401) {
+            // Token expired or invalid; clear stale credentials safely
+            localStorage.removeItem('kaushal_ai_auth_token');
+            localStorage.removeItem('kaushal_ai_active_user');
+            token = null;
+            setCurrentUser(null);
           }
         } catch (e) {
-          console.warn('[Init Auth]:', e.message);
+          console.warn('[Session Verification]:', e.message);
         }
       }
 
@@ -258,13 +261,6 @@ export default function App() {
     }
 
     let token = localStorage.getItem('kaushal_ai_auth_token');
-    
-    // Ensure token is active
-    if (!token && candidateProfile?.email) {
-      const res = await loginUser(candidateProfile.email, 'Kaushal@2026');
-      token = res?.token || localStorage.getItem('kaushal_ai_auth_token');
-    }
-
     if (!token) {
       setIsLoginModalOpen(true);
       return;
@@ -666,11 +662,22 @@ export default function App() {
               onSignOff={handleAssessorSignOff}
               onPushToDigiLocker={async (id) => {
                 try {
-                  const res = await fetch(`/api/digilocker/push/${id}`, { method: 'POST' });
+                  const token = localStorage.getItem('kaushal_ai_auth_token');
+                  const res = await fetch(`/api/digilocker/push/${id}`, {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json',
+                      ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                    }
+                  });
                   const data = await res.json();
-                  alert(`DigiLocker Payload Verified: ${data.message || 'NeGD compliant'}`);
+                  if (res.ok) {
+                    alert(`DigiLocker Push Successful: ${data.message || 'NeGD compliant URI generated'}`);
+                  } else {
+                    alert(`DigiLocker Request Failed (${res.status}): ${data.error || 'Unauthorized or assessment not signed off'}`);
+                  }
                 } catch (e) {
-                  alert("Certificate verified according to DigiLocker technical schema.");
+                  alert("DigiLocker request error: " + e.message);
                 }
               }}
               lang={lang}

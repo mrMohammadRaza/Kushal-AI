@@ -14,6 +14,30 @@ const {
 } = require('../data/defaultTemplates');
 
 /**
+ * Validates candidate code against malicious sandbox escape patterns.
+ */
+function validateCandidateCode(code) {
+  if (typeof code !== 'string') return null;
+  const dangerousPatterns = [
+    { pattern: /\bprocess\b/, label: 'process access' },
+    { pattern: /\brequire\s*\(/, label: 'dynamic require' },
+    { pattern: /\bimport\s*\(/, label: 'dynamic import' },
+    { pattern: /\bchild_process\b/, label: 'process spawning' },
+    { pattern: /\bfs\b/, label: 'filesystem access' },
+    { pattern: /\bconstructor\s*\.\s*constructor\b/, label: 'constructor prototype escape' },
+    { pattern: /\b__proto__\b/, label: 'prototype pollution' },
+    { pattern: /\beval\s*\(/, label: 'eval execution' }
+  ];
+
+  for (const { pattern, label } of dangerousPatterns) {
+    if (pattern.test(code)) {
+      return `Security policy violation: prohibited pattern '${label}' detected.`;
+    }
+  }
+  return null;
+}
+
+/**
  * Safely executes candidate practical task-list code in an isolated V8 context.
  * Performs deterministic unit tests on core task list operations:
  * - Empty string input validation
@@ -41,6 +65,30 @@ function evaluatePracticalCodingTask(submittedCode = {}) {
         message: "No code submitted for practical coding task."
       })),
       logs: "Execution aborted: empty JavaScript code submission."
+    };
+  }
+
+  const securityViolation = validateCandidateCode(javascript);
+  if (securityViolation) {
+    return {
+      passed: false,
+      status: 'failed',
+      error: securityViolation,
+      score: 0,
+      maxScore: 30,
+      passedTests: 0,
+      passedCount: 0,
+      totalTests: 5,
+      passRate: 0,
+      testResults: WEB_DEVELOPER_CODING_TASK.automatedTests.map(t => ({
+        id: t.id,
+        name: t.name,
+        passed: false,
+        points: 0,
+        maxPoints: t.points,
+        message: securityViolation
+      })),
+      logs: `Execution aborted: ${securityViolation}`
     };
   }
 
@@ -267,6 +315,26 @@ function evaluateDebuggingTask(submittedCode = '') {
         message: "No code submitted for debugging task."
       })),
       logs: "Execution aborted: empty debug code."
+    };
+  }
+
+  const securityViolation = validateCandidateCode(submittedCode);
+  if (securityViolation) {
+    return {
+      passed: false,
+      score: 0,
+      maxScore: 15,
+      passedTests: 0,
+      totalTests: 2,
+      testResults: WEB_DEVELOPER_DEBUG_TASK.automatedTests.map(t => ({
+        id: t.id,
+        name: t.name,
+        passed: false,
+        points: 0,
+        maxPoints: t.points,
+        message: securityViolation
+      })),
+      logs: `Execution aborted: ${securityViolation}`
     };
   }
 

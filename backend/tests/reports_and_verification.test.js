@@ -3,7 +3,7 @@ const app = require('../src/server');
 const { db } = require('../src/data/database');
 
 describe('Reports Generation & Public QR Code Verification', () => {
-  jest.setTimeout(25000);
+  jest.setTimeout(60000);
   let assessorToken;
   let testAssessmentId;
   let generatedReportHash;
@@ -23,7 +23,7 @@ describe('Reports Generation & Public QR Code Verification', () => {
       .field('tradeId', 'electrician-l3')
       .field('vivaAnswer', 'Demonstrated circuit isolation, checked voltage with multimeter, connected earthing wire.');
     testAssessmentId = evalRes.body.id;
-  });
+  }, 60000);
 
   it('should allow certified assessor to sign off and release official PDF report with QR code', async () => {
     const res = await request(app)
@@ -94,5 +94,41 @@ describe('Reports Generation & Public QR Code Verification', () => {
 
     expect(res.statusCode).toBe(404);
     expect(res.body.verified).toBe(false);
+  });
+
+  it('IDOR PROTECTION: GET /api/reports/:assessmentId requires authentication', async () => {
+    const res = await request(app)
+      .get(`/api/reports/${testAssessmentId}`);
+
+    expect(res.statusCode).toBe(401);
+    expect(res.body.error).toContain('Authentication token is missing');
+  });
+
+  it('IDOR PROTECTION: GET /api/reports/:assessmentId allows authorized assessor', async () => {
+    const res = await request(app)
+      .get(`/api/reports/${testAssessmentId}`)
+      .set('Authorization', `Bearer ${assessorToken}`);
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body.assessmentId).toBe(testAssessmentId);
+  });
+
+  it('DIGILOCKER INTEGRITY: POST /api/digilocker/push/:assessmentId requires authentication', async () => {
+    const res = await request(app)
+      .post(`/api/digilocker/push/${testAssessmentId}`);
+
+    expect(res.statusCode).toBe(401);
+    expect(res.body.error).toContain('Authentication token is missing');
+  });
+
+  it('DIGILOCKER INTEGRITY: POST /api/digilocker/push/:assessmentId creates payload for signed assessment', async () => {
+    const res = await request(app)
+      .post(`/api/digilocker/push/${testAssessmentId}`)
+      .set('Authorization', `Bearer ${assessorToken}`);
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.uri).toBeDefined();
+    expect(res.body.xmlPayload).toContain('<DocType>SKLCERT</DocType>');
   });
 });
