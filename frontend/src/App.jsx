@@ -64,15 +64,15 @@ export default function App() {
   const [isDemoMode, setIsDemoMode] = useState(false);
 
   const DEMO_WEB_DEV_CANDIDATE = {
-    id: "cand-103",
-    fullName: "Aarav Sharma",
-    email: "dev.candidate@skillindia.rpl",
+    id: "cand-demo-sih",
+    fullName: "Priya Sharma",
+    email: "demo@kushalai.local",
     tradeId: "web-developer-l5",
     tradeName: "Web Developer (NSQF Level 5)",
-    experienceYears: "3",
-    employmentType: "Freelance Frontend & Web Developer",
-    workLocation: "Bengaluru, Karnataka",
-    companyName: "Sharma Dev Labs",
+    experienceYears: "4",
+    employmentType: "Freelance Frontend Web & UI Developer",
+    workLocation: "Varanasi, Uttar Pradesh",
+    companyName: "Sharma Tech Solutions",
     primaryLanguage: "en",
     role: "candidate",
     isDemo: true
@@ -232,7 +232,7 @@ export default function App() {
     setCandidateProfile(DEMO_WEB_DEV_CANDIDATE);
     localStorage.setItem('kaushal_ai_active_candidate', JSON.stringify(DEMO_WEB_DEV_CANDIDATE));
     try {
-      const res = await loginUser(DEMO_WEB_DEV_CANDIDATE.email, 'Kaushal@2026');
+      const res = await loginUser(DEMO_WEB_DEV_CANDIDATE.email, 'KushalDemo@2026!');
       if (res?.token) {
         localStorage.setItem('kaushal_ai_auth_token', res.token);
       }

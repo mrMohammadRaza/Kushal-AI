@@ -23,9 +23,25 @@ import { loginUser, registerUser, saveCandidateSession } from '../utils/supabase
 
 const PRELOADED_CANDIDATES = [
   {
+    id: "cand-demo-sih",
+    name: "Priya Sharma (SIH Demo)",
+    email: "demo@kushalai.local",
+    password: "KushalDemo@2026!",
+    tradeId: "web-developer-l5",
+    tradeTitle: "Web Developer (NSQF Level 5)",
+    experienceYears: "4",
+    employmentType: "Freelance Frontend Web & UI Developer",
+    workLocation: "Varanasi, Uttar Pradesh",
+    companyName: "Sharma Tech Solutions",
+    primaryLanguage: "en",
+    assistanceNeed: "Standard",
+    isSihDemo: true
+  },
+  {
     id: "cand-103",
     name: "Aarav Sharma",
     email: "dev.candidate@skillindia.rpl",
+    password: "Kaushal@2026",
     tradeId: "web-developer-l5",
     tradeTitle: "Web Developer (NSQF Level 5)",
     experienceYears: "3",
@@ -39,6 +55,7 @@ const PRELOADED_CANDIDATES = [
     id: "cand-101",
     name: "Ramesh Kumar Sharma",
     email: "ramesh.sharma@skillindia.rpl",
+    password: "Kaushal@2026",
     tradeId: "electrician-l3",
     tradeTitle: "Assistant Electrician (Level 3)",
     experienceYears: "6",
@@ -52,6 +69,7 @@ const PRELOADED_CANDIDATES = [
     id: "cand-102",
     name: "Mohammad Aslam Ansari",
     email: "aslam.ansari@skillindia.rpl",
+    password: "Kaushal@2026",
     tradeId: "electrician-l4",
     tradeTitle: "Industrial Electrician (Level 4)",
     experienceYears: "8",
@@ -65,6 +83,7 @@ const PRELOADED_CANDIDATES = [
     id: "user-assessor-01",
     name: "Rajesh Varma (Lead Assessor)",
     email: "assessor@kaushal.gov.in",
+    password: "Kaushal@2026",
     tradeId: "assessor",
     tradeTitle: "Certified Assessor (NCVET Verified)",
     experienceYears: "10",
@@ -81,18 +100,18 @@ export default function LoginModal({ isOpen, onClose, onLoginSuccess, lang = 'hi
   const [tab, setTab] = useState('login'); // 'login' | 'register' | 'quick'
   
   // Auth Form State
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('Kaushal@2026');
+  const [email, setEmail] = useState('demo@kushalai.local');
+  const [password, setPassword] = useState('KushalDemo@2026!');
   
   // Job & Test Profile Form State
-  const [fullName, setFullName] = useState('Ramesh Kumar Sharma');
-  const [tradeId, setTradeId] = useState('electrician-l3');
-  const [experienceYears, setExperienceYears] = useState('5');
-  const [employmentType, setEmploymentType] = useState('Self-Employed / Independent Worker');
+  const [fullName, setFullName] = useState('Priya Sharma');
+  const [tradeId, setTradeId] = useState('web-developer-l5');
+  const [experienceYears, setExperienceYears] = useState('4');
+  const [employmentType, setEmploymentType] = useState('Freelance Frontend Web & UI Developer');
   const [workLocation, setWorkLocation] = useState('Varanasi, UP');
-  const [companyName, setCompanyName] = useState('Sharma Electrical Services');
-  const [primaryLanguage, setPrimaryLanguage] = useState('hi');
-  const [assistanceNeed, setAssistanceNeed] = useState('None');
+  const [companyName, setCompanyName] = useState('Sharma Tech Solutions');
+  const [primaryLanguage, setPrimaryLanguage] = useState('en');
+  const [assistanceNeed, setAssistanceNeed] = useState('Standard');
   
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState(null);
@@ -102,7 +121,7 @@ export default function LoginModal({ isOpen, onClose, onLoginSuccess, lang = 'hi
   const handleSelectQuickCandidate = (candidate) => {
     setFullName(candidate.name);
     setEmail(candidate.email);
-    setPassword('Kaushal@2026');
+    setPassword(candidate.password || 'Kaushal@2026');
     setTradeId(candidate.tradeId);
     setExperienceYears(candidate.experienceYears);
     setEmploymentType(candidate.employmentType);
@@ -320,13 +339,27 @@ export default function LoginModal({ isOpen, onClose, onLoginSuccess, lang = 'hi
                 <div
                   key={cand.id}
                   onClick={() => handleSelectQuickCandidate(cand)}
-                  className="p-3.5 rounded-2xl border border-slate-800 bg-slate-950/80 hover:border-blue-500/60 hover:bg-blue-950/30 cursor-pointer transition-all space-y-1.5 group"
+                  className={`p-3.5 rounded-2xl border cursor-pointer transition-all space-y-1.5 group ${
+                    cand.isSihDemo
+                      ? 'border-amber-400 bg-gradient-to-r from-amber-950/40 via-slate-950 to-blue-950/40 hover:border-amber-300 shadow-lg shadow-amber-950/30'
+                      : 'border-slate-800 bg-slate-950/80 hover:border-blue-500/60 hover:bg-blue-950/30'
+                  }`}
                 >
+                  {cand.isSihDemo && (
+                    <div className="flex items-center gap-1.5 text-[10px] font-black text-amber-300 uppercase tracking-wider">
+                      <Sparkles className="w-3 h-3 text-amber-400" />
+                      <span>★ SIH Official Video Demo Account</span>
+                    </div>
+                  )}
                   <div className="flex items-center justify-between">
-                    <span className="font-bold text-white text-xs group-hover:text-blue-300 transition-colors">
+                    <span className={`font-bold text-xs transition-colors ${
+                      cand.isSihDemo ? 'text-amber-200 group-hover:text-amber-100 font-extrabold' : 'text-white group-hover:text-blue-300'
+                    }`}>
                       {cand.name}
                     </span>
-                    <span className="px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-blue-500/20 text-blue-300">
+                    <span className={`px-2 py-0.5 rounded-md text-[10px] font-extrabold ${
+                      cand.isSihDemo ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' : 'bg-blue-500/20 text-blue-300'
+                    }`}>
                       {cand.experienceYears} Yrs Exp
                     </span>
                   </div>
@@ -335,7 +368,7 @@ export default function LoginModal({ isOpen, onClose, onLoginSuccess, lang = 'hi
                   </p>
                   <div className="flex items-center justify-between text-[10px] text-slate-400 pt-1 border-t border-slate-800">
                     <span>{cand.workLocation}</span>
-                    <span className="text-emerald-400 font-semibold">{cand.employmentType.slice(0, 20)}...</span>
+                    <span className="text-emerald-400 font-semibold">{cand.employmentType.slice(0, 24)}...</span>
                   </div>
                 </div>
               ))}
@@ -346,6 +379,30 @@ export default function LoginModal({ isOpen, onClose, onLoginSuccess, lang = 'hi
         {/* Tab: Login / Registration Form */}
         {(tab === 'login' || tab === 'register') && (
           <form onSubmit={handleSubmit} className="p-6 space-y-5">
+            {/* SIH Video Demo Shortcut Banner */}
+            <div className="p-3 rounded-xl bg-gradient-to-r from-amber-500/10 via-blue-500/10 to-slate-900 border border-amber-500/30 flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-amber-400 flex-shrink-0" />
+                <div className="text-xs">
+                  <span className="text-amber-300 font-bold">SIH Demo Account: </span>
+                  <code className="text-amber-200 bg-amber-950/60 px-1 py-0.5 rounded text-[11px]">demo@kushalai.local</code>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setEmail('demo@kushalai.local');
+                  setPassword('KushalDemo@2026!');
+                  setFullName('Priya Sharma');
+                  setTradeId('web-developer-l5');
+                }}
+                className="px-2.5 py-1 text-[11px] font-extrabold rounded-lg bg-amber-500 text-slate-950 hover:bg-amber-400 transition-all flex items-center gap-1 shadow-sm"
+              >
+                <Zap className="w-3 h-3" />
+                <span>Auto-Fill Demo</span>
+              </button>
+            </div>
+
             {errorMsg && (
               <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs flex items-center gap-2">
                 <AlertCircle className="w-4 h-4 flex-shrink-0" />

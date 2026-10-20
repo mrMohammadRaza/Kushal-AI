@@ -9,13 +9,13 @@
 
 | Test Suite / Target | Framework | Total Tests | Passed | Failed | Blocked | Execution Time |
 |---|---|---|---|---|---|---|
-| **Backend Auth & RBAC** | Jest | 18 | 18 | 0 | 0 | 8.5s |
-| **Backend Evidence & Scoring** | Jest | 4 | 4 | 0 | 0 | 22.8s |
-| **Backend Reports & Verification** | Jest | 8 | 8 | 0 | 0 | 7.0s |
-| **Backend Web Developer Hybrid Suite**| Jest | 19 | 19 | 0 | 0 | 14.5s |
-| **AI Microservice Pipeline** | Pytest | 5 | 5 | 0 | 0 | 0.48s |
-| **Frontend Production Build** | Vite | 1901 modules | Built | 0 | 0 | 6.29s |
-| **Total Automated Coverage** | — | **54 tests** | **54** | **0** | **0** | **~50s** |
+| **Backend Auth & RBAC** | Jest | 21 | 21 | 0 | 0 | 7.1s |
+| **Backend Evidence & Scoring** | Jest | 4 | 4 | 0 | 0 | 26.4s |
+| **Backend Reports & Verification** | Jest | 8 | 8 | 0 | 0 | 10.4s |
+| **Backend Web Developer Hybrid Suite**| Jest | 19 | 19 | 0 | 0 | 5.4s |
+| **AI Microservice Pipeline** | Pytest | 5 | 5 | 0 | 0 | 2.0s |
+| **Frontend Production Build** | Vite | 1901 modules | Built | 0 | 0 | 5.58s |
+| **Total Automated Coverage** | — | **57 tests** | **57** | **0** | **0** | **~50s** |
 
 ---
 
@@ -38,6 +38,7 @@
 | **E2E-13** | Report generation & QR check | Certified assessor signs off; produces tamper-evident hash; public QR validates | **PASS** | `npm.cmd test -- tests/reports_and_verification.test.js` |
 | **E2E-14** | Mobile responsiveness & forms | Multi-step form, code workspace, and assessor tabs render without overflow | **PASS** | `npm.cmd --prefix frontend run build` |
 | **E2E-15** | Expired session handling | Token expiration (401) triggers clean session purge in client storage | **PASS** | Implemented in `App.jsx` mount check |
+| **E2E-16** | SIH Presentation Demo Account | `demo@kushalai.local` authenticates, accesses candidate profile, rejects bad password | **PASS** | `npm.cmd test -- tests/auth_and_rbac.test.js` |
 
 ---
 
@@ -48,15 +49,15 @@
 > kaushal-ai-backend@1.0.0 test
 > jest --runInBand --detectOpenHandles --forceExit
 
-PASS tests/auth_and_rbac.test.js
-PASS tests/evidence_integrity_and_scoring.test.js (22.789 s)
-PASS tests/reports_and_verification.test.js (7.007 s)
-PASS tests/web_developer_hybrid_assessment.test.js
+PASS tests/evidence_integrity_and_scoring.test.js (26.388 s)
+PASS tests/reports_and_verification.test.js (10.38 s)
+PASS tests/auth_and_rbac.test.js (7.096 s)
+PASS tests/web_developer_hybrid_assessment.test.js (5.36 s)
 
 Test Suites: 4 passed, 4 total
-Tests:       49 passed, 49 total
+Tests:       52 passed, 52 total
 Snapshots:   0 total
-Time:        33.611 s
+Time:        50.095 s
 Ran all test suites.
 ```
 

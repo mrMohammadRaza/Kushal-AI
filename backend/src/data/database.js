@@ -462,6 +462,10 @@ function seedInitialData() {
   insertUser.run('user-cand-102', 'aslam.ansari@skillindia.rpl', passwordHash, 'Mohammad Aslam Ansari', 'candidate', 'center-01', '+91 98111 22334');
   insertUser.run('user-cand-103', 'dev.candidate@skillindia.rpl', passwordHash, 'Aarav Sharma (Web Developer)', 'candidate', 'center-01', '+91 98450 12345');
 
+  // SIH Presentation Demo Account (Disabled in production)
+  const sihDemoPasswordHash = bcrypt.hashSync('KushalDemo@2026!', 10);
+  insertUser.run('user-demo-sih', 'demo@kushalai.local', sihDemoPasswordHash, 'Priya Sharma (SIH Demo Candidate)', 'candidate', 'center-01', '+91 98765 00000');
+
   // Seed Candidate Profiles
   const insertCandidate = db.prepare(`
     INSERT OR IGNORE INTO candidate_profiles (
@@ -470,6 +474,14 @@ function seedInitialData() {
       primary_language, accessibility_pref, profile_photo, enrolled_date
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
+
+  insertCandidate.run(
+    'cand-demo-sih', 'user-demo-sih', 'Priya Sharma', 25, 'Female', '+91 98765 00000', '8899',
+    'Uttar Pradesh', 'Varanasi', 'web-developer-l5', 4, 'Diploma in Computer Applications',
+    'Freelance Frontend Web & UI Developer', 'en', 'Standard',
+    'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=200&auto=format&fit=crop&q=80',
+    '2026-04-10'
+  );
 
   insertCandidate.run(
     'cand-101', 'user-cand-101', 'Ramesh Kumar Sharma', 32, 'Male', '+91 98765 43210', '4589',

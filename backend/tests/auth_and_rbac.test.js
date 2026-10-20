@@ -313,4 +313,50 @@ describe('Authentication & Server-Enforced RBAC', () => {
     expect(startRes.body.assessment?.id).toBeDefined();
     expect(startRes.body.assessment?.candidate_id).toBeDefined();
   });
+
+  describe('SIH Video Presentation Demo Account (demo@kushalai.local)', () => {
+    it('should authenticate demo@kushalai.local using KushalDemo@2026!', async () => {
+      const res = await request(app)
+        .post('/api/auth/login')
+        .send({ email: 'demo@kushalai.local', password: 'KushalDemo@2026!' });
+
+      expect(res.statusCode).toBe(200);
+      expect(res.body.token).toBeDefined();
+      expect(res.body.user.role).toBe('candidate');
+      expect(res.body.user.email).toBe('demo@kushalai.local');
+      expect(res.body.candidateProfile).toBeDefined();
+      expect(res.body.candidateProfile.trade_id).toBe('web-developer-l5');
+    });
+
+    it('should reject demo@kushalai.local when supplied with invalid password', async () => {
+      const res = await request(app)
+        .post('/api/auth/login')
+        .send({ email: 'demo@kushalai.local', password: 'InvalidPassword123' });
+
+      expect(res.statusCode).toBe(401);
+      expect(res.body.error).toContain('Invalid credentials');
+    });
+
+    it('should allow demo@kushalai.local to access own candidate profile and active assessment', async () => {
+      const loginRes = await request(app)
+        .post('/api/auth/login')
+        .send({ email: 'demo@kushalai.local', password: 'KushalDemo@2026!' });
+
+      const token = loginRes.body.token;
+      const profileRes = await request(app)
+        .get(`/api/candidates/${loginRes.body.candidateProfile.id}`)
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(profileRes.statusCode).toBe(200);
+      expect(profileRes.body.full_name).toContain('Priya Sharma');
+
+      const startRes = await request(app)
+        .post('/api/assessments/start')
+        .set('Authorization', `Bearer ${token}`)
+        .send({ tradeId: 'web-developer-l5' });
+
+      expect([200, 201]).toContain(startRes.statusCode);
+      expect(startRes.body.assessment).toBeDefined();
+    });
+  });
 });
